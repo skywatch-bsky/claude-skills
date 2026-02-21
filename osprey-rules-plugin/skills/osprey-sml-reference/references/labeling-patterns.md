@@ -2,7 +2,7 @@
 
 All common labeling use cases in Osprey, with implementation examples.
 
-## 1. Simple Content Match
+### 1. Simple Content Match
 
 **When to use:** Label when post content matches a word list.
 
@@ -22,7 +22,7 @@ WhenRules(
 )
 ```
 
-## 2. Identity-Based Labeling
+### 2. Identity-Based Labeling
 
 **When to use:** Label a specific account by DID.
 
@@ -42,16 +42,16 @@ WhenRules(
 )
 ```
 
-## 3. Account Metadata Gating
+### 3. Account Metadata Gating
 
 **When to use:** Use account age, post count, follower count as gates for labeling.
 
 ```python
 NewAccountSpam = Rule(
     when_all=[
-        AccountAgeSeconds < 86400,          # less than 1 day old
-        PostsCount > 50,                    # but posting heavily
-        FollowersCount < 5,                 # with almost no followers
+        AccountAgeSeconds < Day,
+        PostsCount > 50,
+        FollowersCount < 5,
     ],
     description=f'New account spam (age={AccountAgeSeconds}s, posts={PostsCount})',
 )
@@ -64,7 +64,7 @@ WhenRules(
 )
 ```
 
-## 4. Temporal Expiration
+### 4. Temporal Expiration
 
 **When to use:** Add labels that automatically expire after a duration.
 
@@ -81,7 +81,7 @@ WhenRules(
 )
 ```
 
-## 5. Conditional Escalation (Label Chaining)
+### 5. Conditional Escalation (Label Chaining)
 
 **When to use:** Apply labels only if the entity already has a prior label. Core "stateful" pattern.
 
@@ -104,7 +104,7 @@ WhenRules(
 )
 ```
 
-## 6. Sliding Window Rate Limiting
+### 6. Sliding Window Rate Limiting
 
 **When to use:** Count events within a time window; apply labels at thresholds.
 
@@ -130,7 +130,7 @@ WhenRules(
 )
 ```
 
-## 7. Strike System (Counting Violations Over Time)
+### 7. Strike System (Counting Violations Over Time)
 
 **When to use:** Discrete escalation tiers using expiring labels; no Redis required.
 
@@ -153,7 +153,7 @@ WhenRules(
 )
 ```
 
-## 8. Manual Override Protection
+### 8. Manual Override Protection
 
 **When to use:** Respect operator manual removes; don't re-apply automatically removed labels.
 
@@ -181,7 +181,7 @@ WhenRules(
 )
 ```
 
-## 9. Label Maturity Check
+### 9. Label Maturity Check
 
 **When to use:** Only act on labels that have existed for a minimum duration.
 
@@ -208,14 +208,14 @@ WhenRules(
 )
 ```
 
-## 10. Multi-Signal Composite
+### 10. Multi-Signal Composite
 
 **When to use:** Combine multiple independent signals into a single labeling decision.
 
 ```python
 SuspiciousProfile = Rule(
     when_all=[
-        AccountAgeSeconds < 3600,
+        AccountAgeSeconds < Hour,
         not HasAvatar,
         FollowersCount == 0,
     ],
@@ -245,7 +245,7 @@ WhenRules(
 )
 ```
 
-## 11. ML-Scored Labeling
+### 11. ML-Scored Labeling
 
 **When to use:** Use ML model scores (toxicity, sentiment) as rule conditions.
 
@@ -271,7 +271,7 @@ WhenRules(
 )
 ```
 
-## 12. Domain/Link-Based Labeling
+### 12. Domain/Link-Based Labeling
 
 **When to use:** Label based on domains in post content or embeds.
 
@@ -295,7 +295,7 @@ WhenRules(
 )
 ```
 
-## 13. Cross-Entity Labeling
+### 13. Cross-Entity Labeling
 
 **When to use:** Apply labels to multiple entity types in a single WhenRules block.
 
@@ -310,7 +310,7 @@ WhenRules(
 )
 ```
 
-## 14. Regex Pattern Matching
+### 14. Regex Pattern Matching
 
 **When to use:** Detect content matching regex patterns.
 
@@ -333,7 +333,7 @@ WhenRules(
 )
 ```
 
-## 15. List-Based Matching
+### 15. List-Based Matching
 
 **When to use:** Match against externally managed YAML word lists (with variants like counting and regex).
 
@@ -369,7 +369,7 @@ WhenRules(
 )
 ```
 
-## 16. Censorized (Lookalike) Detection
+### 16. Censorized (Lookalike) Detection
 
 **When to use:** Detect text deliberately obfuscated with lookalikes (e.g., "h3ll0" for "hello").
 
@@ -394,7 +394,7 @@ WhenRules(
 )
 ```
 
-## 17. AT Protocol Label Emission
+### 17. AT Protocol Label Emission
 
 **When to use:** Emit labels to Bluesky's Ozone moderation system.
 
@@ -412,7 +412,7 @@ WhenRules(
 )
 ```
 
-## 18. AT Protocol List Management
+### 18. AT Protocol List Management
 
 **When to use:** Add accounts to AT Protocol lists.
 
@@ -428,7 +428,7 @@ WhenRules(
 )
 ```
 
-## 19. Verdict Declaration
+### 19. Verdict Declaration
 
 **When to use:** Emit verdicts for synchronous callers (real-time moderation decisions).
 
@@ -441,13 +441,13 @@ WhenRules(
 )
 ```
 
-## 20. Bulk Labeling
+### 20. Bulk Labeling
 
 **When to use:** Operator-initiated batch operations via Druid queries. Apply `MANUALLY_ADDED` or `MANUALLY_REMOVED` labels with expiration and rollback support.
 
 (Not rule-driven; handled by operators via `BulkLabelSink`.)
 
-## 21. Cooldown / Debounce
+### 21. Cooldown / Debounce
 
 **When to use:** Prevent repeated labeling by caching state.
 
@@ -480,7 +480,7 @@ WhenRules(
 )
 ```
 
-## 22. Cached State Tracking
+### 22. Cached State Tracking
 
 **When to use:** Use Redis cache to track arbitrary state across events.
 
@@ -512,7 +512,7 @@ WhenRules(
 )
 ```
 
-## 23. Label Removal on Condition
+### 23. Label Removal on Condition
 
 **When to use:** Remove labels when conditions change (e.g., user matured past a restriction).
 
@@ -534,7 +534,7 @@ WhenRules(
 )
 ```
 
-## 24. Multi-Rule OR Trigger
+### 24. Multi-Rule OR Trigger
 
 **When to use:** Multiple different rules can trigger the same effect (OR logic).
 

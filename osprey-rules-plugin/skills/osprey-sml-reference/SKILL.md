@@ -60,7 +60,7 @@ Combines multiple conditions with AND logic. All items in `when_all` must be the
 ```python
 NewAccountSpam = Rule(
     when_all=[
-        AccountAgeSeconds < 86400,
+        AccountAgeSeconds < Day,
         PostsCount > 50,
         FollowersCount < 5,
     ],
@@ -145,6 +145,7 @@ WhenRules(
 | `ListContains` | `list, phrases, case_sensitive?, word_boundaries?` | `Optional[str]` | Match against YAML word list |
 | `CensorizedListContains` | `list, phrases, plurals?, must_be_censorized?` | `Optional[str]` | Match lookalike/obfuscated text |
 | `HasLabel` | `entity, label, manual?, status?, min_label_age?` | `bool` | Check if entity has label |
+| `HasAtprotoLabel` | `entity, label` | `bool` | Check AT Protocol label |
 | `TimeDelta` | `weeks?, days?, hours?, minutes?, seconds?` | `TimeDeltaT` | Create a duration |
 | `AnalyzeToxicity` | `text, when_all` | `Optional[float]` | ML toxicity score |
 | `AnalyzeSentiment` | `text, when_all` | `Optional[float]` | ML sentiment polarity |
