@@ -1,0 +1,20 @@
+# User data and analysis
+.obsidian/**
+
+# Python cache
+**/__pycache__
+
+# Database files
+*.db
+*.sqlite
+
+# Git worktrees
+.worktrees/
+
+# System files
+!**/.gitkeep
+**/.DS_Store
+
+CLAUDE.md
+!osprey-rules-plugin/CLAUDE.md
+metacognition.md
