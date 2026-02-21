@@ -20,7 +20,8 @@ plugin so any session can gain SML fluency on demand.
   - Validation is mandatory after every rule write or edit (never skipped)
   - Labels must exist in `config/labels.yaml` before use in effects
 - **Expects**:
-  - Access to `osprey-for-atproto` repo (inferred from rules path, or user-provided path/git URL)
+  - Access to `osprey-for-atproto` repo (user-provided path, used for validation and UDF discovery)
+  - `osprey-rule-investigator` plugin installed (used by `writing-osprey-rules` Step 2 for project analysis)
   - `uv` installed for running `uv run osprey-cli` and `uv sync`
   - A valid Osprey rules project with `main.sml`, `config/`, `models/`, `rules/`
   - User provides project path on first invocation
@@ -28,8 +29,9 @@ plugin so any session can gain SML fluency on demand.
 ## Dependencies
 
 - **Uses**: `osprey-cli` via `uv run` from `osprey-for-atproto` repo (validation via `push-rules --dry-run`)
+- **Uses**: `osprey-rule-investigator` plugin (project analysis via Task tool delegation in Step 2)
 - **Used by**: Any Claude Code session with this plugin installed
-- **Boundary**: Plugin is self-contained; skills reference each other but nothing external
+- **Boundary**: Plugin depends on `osprey-rule-investigator` for project state discovery; all other skills reference each other internally
 
 ## Key Decisions
 
