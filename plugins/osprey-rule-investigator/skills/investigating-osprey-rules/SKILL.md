@@ -531,4 +531,3 @@ A single rule may appear on multiple rows if it triggers multiple effects
 
 Include conditional graph gates at the bottom to note which rules are only
 active under specific event conditions.
-```
