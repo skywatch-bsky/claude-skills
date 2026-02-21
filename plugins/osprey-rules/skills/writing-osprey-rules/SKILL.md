@@ -33,69 +33,49 @@ Checking project at /path/to/rules:
   ✓ rules/ directory found
 ```
 
+**Also ask for the osprey-for-atproto repo path:**
+1. Use `AskUserQuestion` to request the path to the `osprey-for-atproto` repository.
+2. This path is needed for dynamic UDF discovery and `osprey-cli` validation.
+3. If the user doesn't have it locally, note that UDF discovery will use a static fallback.
+4. Store this path for the duration of the session.
+
 ## 2. Read Project State
 
-Before writing any rules, read and understand the existing project configuration.
+Delegate project state discovery to the `osprey-rule-investigator` agent. This agent
+systematically reads the project structure, labels, models, UDFs, and execution graph,
+producing a comprehensive report.
 
-**Read these files:**
+**Process:**
+1. Use the `Task` tool to spawn `osprey-rule-investigator` as a subagent:
+   - `subagent_type`: `osprey-rule-investigator:osprey-rule-investigator`
+   - `prompt`: Include the rules project path and osprey-for-atproto repo path
+   collected in Step 1
+   - `model`: haiku (the agent definition specifies this)
 
-### `config/labels.yaml`
-- List all available label names
-- Record which entity types each label is valid for (`valid_for`)
-- Note the connotation (neutral, positive, negative)
-- Print a summary table for reference
+2. Example Task invocation:
+   ```
+   Task(
+     subagent_type="osprey-rule-investigator:osprey-rule-investigator",
+     description="Investigate rules project",
+     prompt="Investigate the Osprey rules project at {rules_project_path}.
+             The osprey-for-atproto repo is at {osprey_for_atproto_path}.
+             Produce a full structured report covering project structure,
+             labels, models, UDFs, and execution graph."
+   )
+   ```
 
-Example summary:
-```
-Available Labels in Project:
-  Label Name              | Valid For        | Connotation
-  ----------------------- | ================ | -----------
-  alt-gov                 | UserId           | neutral
-  alt-tech                | AtUri            | neutral
-  amplifier               | UserId           | neutral
-  ...
-```
+3. The investigator returns a structured text report with:
+   - Project structure validation (present/missing directories)
+   - Labels table (name, valid_for, connotation)
+   - Model catalogue (variables, types, line numbers)
+   - UDF signatures (dynamic or static discovery)
+   - Execution graph map (Import/Require chains, Rule/WhenRules catalogue)
 
-### `models/` directory
-- List all model files in `models/` and `models/record/`
-- Identify key variables defined in each model
-- Note the model hierarchy (base → record type → specific features)
+4. Use the investigator's report as your project context for all subsequent steps.
+   Do NOT re-read the files yourself — the investigator has already done this.
 
-Example:
-```
-Project Models:
-  models/base.sml
-    - UserId (Entity[str])
-    - Handle (Entity[str])
-    - ActionName (str)
-    - Second, Minute, Hour, Day, Week (time constants)
-
-  models/record/post.sml
-    - (specific post features)
-
-  models/label_guards.sml
-    - Pre-computed HasAtprotoLabel checks for common labels
-```
-
-### `rules/index.sml`
-- Understand the current execution graph
-- Identify which event types have rules:
-  - `rules/record/index.sml` → event operations on records
-  - `rules/identity/index.sml` → identity actions
-  - Other event-type-specific directories
-
-Example from project:
-```
-rules/index.sml wiring:
-  - Imports: models/base.sml
-  - Conditionally requires rules/record/index.sml when IsOperation=true
-  - Conditionally requires rules/identity/index.sml when ActionName='identity'
-```
-
-### `models/label_guards.sml` (if exists)
-- List pre-computed label guard variables
-- These prevent re-labeling by checking if an entity already has a label
-- Example: `_HasBeansLabel = HasAtprotoLabel(entity=UserId, label='beans')`
+**If the investigator reports missing components:** Surface the findings to the user
+and ask whether to proceed with what's available or fix the project structure first.
 
 ## 3. Understand the Target Behaviour
 

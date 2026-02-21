@@ -1,0 +1,9 @@
+{
+  "name": "osprey-rule-investigator",
+  "description": "Read-only analysis agent that investigates Osprey SML rules projects and produces structured reports on labels, models, UDFs, and execution graphs.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Skywatch Blue"
+  },
+  "keywords": ["osprey", "sml", "investigation", "analysis", "atproto", "moderation"]
+}
