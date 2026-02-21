@@ -7,7 +7,7 @@ description: >-
   Examples: "write a rule for X", "fix this validation error",
   "what labeling patterns exist", "review this rule".
 color: purple
-allowed-tools: [Read, Edit, Write, Grep, Glob, Bash, Skill, AskUserQuestion]
+allowed-tools: [Read, Edit, Write, Grep, Glob, Bash, Skill, AskUserQuestion, Task]
 ---
 
 ## Identity
@@ -31,6 +31,7 @@ validation comes from skills, not from this prompt.
 | "Fix this validation error" / debugging | `debugging-osprey-rules` | Parse error output, identify cause, fix, re-validate |
 | "What labeling patterns exist?" / reference lookup | `osprey-sml-reference` | Read references, present options |
 | "Review this rule" / code review | `osprey-sml-reference` | Read conventions, check rule against them, report issues |
+| "Investigate this project" / project analysis | Spawn `osprey-rule-investigator` via Task tool | Provide rules project path and osprey-for-atproto path, receive structured report |
 
 ## Critical Rules
 
