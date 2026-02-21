@@ -156,5 +156,5 @@ WhenRules(
 For detailed patterns and implementation examples, see:
 
 - **24 Labeling Patterns** — `references/labeling-patterns.md`. Covers all common use cases: content matching, rate limiting, strike systems, ML scoring, cross-entity labeling, caching, and more.
-- **Naming Conventions & Anti-Patterns** — `references/sml-conventions.md`. Variable naming, time constants, RegexMatch rules, IncrementWindow keys, type system pitfalls, and what NOT to do.
+- **Naming Conventions & Anti-Patterns** — `references/sml-conventions.md`. Variable naming, time constants, RegexMatch rules, IncrementWindow keys, type system pitfalls, and what NOT to do. Also includes a **Reviewer Checklist** section with structured CONV-prefixed check IDs for systematic convention review.
 
