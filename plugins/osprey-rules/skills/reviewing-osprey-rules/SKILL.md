@@ -48,6 +48,7 @@ project for these issues.
 Examine every `Rule(when_all=[...])` block. All items must be the same type:
 - `RegexMatch(...)`, comparisons (`>`, `<`, `==`, `!=`), `or`/`and` on bools → `bool`
 - `Rule(...)` produces `RuleT`; `RuleT or RuleT` is also `RuleT`
+- `not Rule(...)` produces `RuleT`; `not bool_val` produces `bool`
 - Mixing `bool` and `RuleT` items in the same `when_all` list is a type error
 
 **Severity:** Critical (causes runtime type errors that osprey-cli may not catch

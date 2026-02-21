@@ -49,6 +49,7 @@ Error at <file>:<line>:<column>: <message>
 - `RegexMatch(...)`, comparisons (`>`, `<`, `==`, `!=`), `or`/`and` on bools → `bool`
 - `Rule(...)` produces `RuleT`
 - `RuleT or RuleT` is also `RuleT`
+- `not Rule(...)` produces `RuleT`; `not bool_val` produces `bool`
 - All items in `when_all` must be the SAME type
 
 **Fix option (a):** If most items are `RuleT`, wrap booleans in `Rule()`:
