@@ -399,6 +399,9 @@ These are common shortcuts that lead to broken rules. Reject them explicitly.
 | "I don't need to check labels.yaml" | No. Using undefined labels is a validation error. | Every effect must reference a label that exists in `config/labels.yaml`. |
 | "The model file is correct, I'll ship it" | No. Models are compile-time dependencies. | Validate with `osprey-cli push-rules --dry-run` after every model change. |
 | "I'll use JsonData for this entity ID" | No. Entity IDs must be EntityJson. | Use `EntityJson` for anything that will be labeled (AC2.4). Use `JsonData` only for primitive values. |
+| "osprey-cli passed, so the rule is correct" | Validation catches syntax errors, not logic or convention violations. | After validation passes, manually check for type mixing in `when_all`, hardcoded time values, and convention violations. Load `debugging-osprey-rules` Section 11 for the full checklist. |
+| "86400 is clearer than Day" | It's not. Time constants from `models/base.sml` are the convention. | Replace all hardcoded time values: `86400` → `Day`, `3600` → `Hour`, `604800` → `Week`, etc. |
+| "This is urgent, skip validation" | Urgency is exactly when mistakes happen. | Follow the full workflow. Every time. Skipping steps under pressure is how broken rules ship. |
 
 ---
 

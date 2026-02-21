@@ -158,3 +158,5 @@ For detailed patterns and implementation examples, see:
 
 - **24 Labeling Patterns** — `references/labeling-patterns.md`. Covers all common use cases: content matching, rate limiting, strike systems, ML scoring, cross-entity labeling, caching, and more.
 - **Naming Conventions & Anti-Patterns** — `references/sml-conventions.md`. Variable naming, time constants, RegexMatch rules, IncrementWindow keys, type system pitfalls, and what NOT to do.
+
+**Note:** This is a pure reference skill. It contains no workflow rules or compliance requirements. Rationalization counters are not applicable — see `writing-osprey-rules` and `debugging-osprey-rules` for workflow enforcement.
