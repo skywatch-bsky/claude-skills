@@ -1,0 +1,25 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-skills",
+  "owner": {
+    "name": "Skywatch Blue"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for writing and validating Osprey for Atproto skills",
+    "version": "0.1.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "osprey-rules",
+      "source": "./plugins/osprey-rules",
+      "description": "Teaches Claude Code how to write, edit, and validate Osprey SML moderation rules for atproto.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Skywatch Blue"
+      },
+      "license": "MIT",
+      "keywords": ["osprey", "sml", "moderation", "atproto", "bluesky", "rules"]
+    }
+  ]
+}

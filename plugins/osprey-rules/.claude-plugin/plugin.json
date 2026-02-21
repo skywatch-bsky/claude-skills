@@ -1,0 +1,9 @@
+{
+  "name": "osprey-rules",
+  "description": "Teaches Claude Code how to write, edit, and validate Osprey SML moderation rules for atproto.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Skywatch Blue"
+  },
+  "keywords": ["osprey", "sml", "moderation", "atproto", "bluesky", "rules"]
+}
