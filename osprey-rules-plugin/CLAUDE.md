@@ -12,7 +12,7 @@ plugin so any session can gain SML fluency on demand.
 
 - **Exposes**:
   - Agent: `osprey-rule-writer` -- entry point for all Osprey rule tasks
-  - Command: `/osprey-validate [path]` -- runs `osprey-cli push-rules --dry-run`
+  - Command: `/osprey-validate [path]` -- runs `uv run osprey-cli push-rules --dry-run`
   - Skills: `writing-osprey-rules`, `osprey-sml-reference`, `debugging-osprey-rules`
 - **Guarantees**:
   - Agent delegates ALL SML knowledge to skills (contains no domain knowledge itself)
@@ -20,13 +20,14 @@ plugin so any session can gain SML fluency on demand.
   - Validation is mandatory after every rule write or edit (never skipped)
   - Labels must exist in `config/labels.yaml` before use in effects
 - **Expects**:
-  - `osprey-cli` installed and on PATH for validation
+  - Access to `osprey-for-atproto` repo (inferred from rules path, or user-provided path/git URL)
+  - `uv` installed for running `uv run osprey-cli` and `uv sync`
   - A valid Osprey rules project with `main.sml`, `config/`, `models/`, `rules/`
   - User provides project path on first invocation
 
 ## Dependencies
 
-- **Uses**: `osprey-cli` (external, for validation via `push-rules --dry-run`)
+- **Uses**: `osprey-cli` via `uv run` from `osprey-for-atproto` repo (validation via `push-rules --dry-run`)
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Plugin is self-contained; skills reference each other but nothing external
 
@@ -59,6 +60,7 @@ plugin so any session can gain SML fluency on demand.
 
 ## Gotchas
 
+- `osprey-cli` is NOT on PATH; must be invoked via `uv run` from within `osprey-for-atproto`
 - `osprey-cli` validation catches syntax errors but NOT all logic/convention
   violations; proactive checks (Section 11 of debugging skill) are required
 - `_` prefixed variables are file-local in SML; they cannot be imported cross-file

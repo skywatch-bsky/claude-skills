@@ -6,11 +6,11 @@ user-invocable: false
 
 # Debugging Osprey Rules
 
-This skill helps diagnose and fix validation errors in Osprey SML rule files. When `osprey-cli push-rules` fails, use this guide to identify the error category, understand the root cause, and apply the fix.
+This skill helps diagnose and fix validation errors in Osprey SML rule files. When `uv run osprey-cli push-rules` fails, use this guide to identify the error category, understand the root cause, and apply the fix.
 
 ## 1. Understanding `osprey-cli` Error Output
 
-The `osprey-cli push-rules` command validates SML files and outputs structured error messages:
+The `uv run osprey-cli push-rules` command validates SML files and outputs structured error messages:
 
 ```
 error: {message}
@@ -40,7 +40,7 @@ error: {message}
 **With `--dry-run` flag:**
 
 ```bash
-osprey-cli push-rules <project-path> --dry-run
+uv run osprey-cli push-rules <project-path> --dry-run
 ```
 
 Validation runs without pushing to etcd. Useful for testing fixes before deployment.
@@ -405,7 +405,7 @@ description=f'User {UserId} flagged'
 Always run:
 
 ```bash
-osprey-cli push-rules <project-path> --dry-run
+uv run osprey-cli push-rules <project-path> --dry-run
 ```
 
 After applying a fix, immediately re-validate to confirm the fix works and catch any cascading errors.
@@ -414,7 +414,7 @@ After applying a fix, immediately re-validate to confirm the fix works and catch
 
 1. **Run validation** (if not already done):
    ```bash
-   osprey-cli push-rules <project-path> --dry-run
+   uv run osprey-cli push-rules <project-path> --dry-run
    ```
 
 2. **Read the full error output** carefully. Note error count: `[N/M]` means N errors out of M total.
@@ -427,7 +427,7 @@ After applying a fix, immediately re-validate to confirm the fix works and catch
 
 6. **Re-validate immediately:**
    ```bash
-   osprey-cli push-rules <project-path> --dry-run
+   uv run osprey-cli push-rules <project-path> --dry-run
    ```
 
 7. **Check results:**
@@ -495,7 +495,7 @@ SpamCheck = Rule(when_all=[
 **Re-validate:**
 
 ```bash
-osprey-cli push-rules . --dry-run
+uv run osprey-cli push-rules . --dry-run
 ```
 
 **Result:** Exit code 0 — error fixed!
@@ -544,7 +544,7 @@ error: import cycle detected here
 **Re-validate:**
 
 ```bash
-osprey-cli push-rules . --dry-run
+uv run osprey-cli push-rules . --dry-run
 ```
 
 **Result:** Exit code 0 — cycle resolved!
@@ -589,7 +589,7 @@ _Gate = PostText != None
 **Re-validate:**
 
 ```bash
-osprey-cli push-rules . --dry-run
+uv run osprey-cli push-rules . --dry-run
 ```
 
 **Result:**

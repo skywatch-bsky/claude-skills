@@ -37,7 +37,7 @@ validation comes from skills, not from this prompt.
 - **NEVER write SML code without loading a skill first.** Your prompt does not
   contain SML knowledge.
 - **ALWAYS validate after writing or modifying rules.** Run
-  `osprey-cli push-rules <path> --dry-run`.
+  `uv run osprey-cli push-rules <path> --dry-run` from the osprey-for-atproto repo.
 - **If validation fails, load `debugging-osprey-rules`** to diagnose and fix.
 - **Do NOT hardcode label names.** Read `config/labels.yaml` from the user's
   project.

@@ -239,7 +239,7 @@ WhenRules(
 
 3. **Prevent re-labeling:**
    - Use `HasAtprotoLabel(entity=UserId, label='label-name')` as a guard in the rule's `when_all` to avoid re-labeling.
-   - Pattern: `!_HasLabelX` (use negation to skip if already labeled)
+   - Pattern: `not _HasLabelX` (use negation to skip if already labeled)
 
 4. **Example with guard:**
    ```sml
@@ -300,7 +300,7 @@ Require(rule='rules/record/post/index.sml')
 
 **Validation command:**
 ```bash
-osprey-cli push-rules <project-path> --dry-run
+uv run osprey-cli push-rules <project-path> --dry-run
 ```
 
 **Process:**
@@ -310,7 +310,7 @@ osprey-cli push-rules <project-path> --dry-run
 
 **Example validation output:**
 ```
-$ osprey-cli push-rules /path/to/rules --dry-run
+$ uv run osprey-cli push-rules /path/to/rules --dry-run
 Validating rules...
 ✓ Syntax check passed
 ✓ Model references valid
@@ -371,7 +371,7 @@ These are patterns that cause rules to fail validation or not work as intended.
    - Impact: Rule is never executed
 
 5. **Forgetting to run validation after writing**
-   - Wrong: Assuming the rules work without running `osprey-cli push-rules --dry-run`
+   - Wrong: Assuming the rules work without running `uv run osprey-cli push-rules --dry-run`
    - Right: Run validation every time, fix errors, re-validate
    - Impact: Silent failures, invalid rules in production
 
@@ -391,21 +391,22 @@ These are common shortcuts that lead to broken rules. Reject them explicitly.
 
 | Rationalization | Reality | Action |
 | --- | --- | --- |
-| "I'll validate later" | No. Every change requires validation. | Validate now. Every time. Run `osprey-cli push-rules --dry-run` before finishing. |
+| "I'll validate later" | No. Every change requires validation. | Validate now. Every time. Run `uv run osprey-cli push-rules --dry-run` before finishing. |
 | "This label probably exists" | No. Labels must be explicitly configured. | Read `config/labels.yaml` and confirm the label exists before using it. |
 | "I know the type system" | No. SML type rules are strict. | Load `osprey-sml-reference` if uncertain about EntityJson vs JsonData. |
 | "The project path is obvious" | No. Paths vary by deployment. | Always ask the user for the rules project path on first invocation. |
 | "I'll skip the index wiring" | No. Rules not in the execution graph don't run. | Update `index.sml` to require the new rule. Verify the wiring is correct. |
 | "I don't need to check labels.yaml" | No. Using undefined labels is a validation error. | Every effect must reference a label that exists in `config/labels.yaml`. |
-| "The model file is correct, I'll ship it" | No. Models are compile-time dependencies. | Validate with `osprey-cli push-rules --dry-run` after every model change. |
+| "The model file is correct, I'll ship it" | No. Models are compile-time dependencies. | Validate with `uv run osprey-cli push-rules --dry-run` after every model change. |
 | "I'll use JsonData for this entity ID" | No. Entity IDs must be EntityJson. | Use `EntityJson` for anything that will be labeled (AC2.4). Use `JsonData` only for primitive values. |
 | "osprey-cli passed, so the rule is correct" | Validation catches syntax errors, not logic or convention violations. | After validation passes, manually check for type mixing in `when_all`, hardcoded time values, and convention violations. Load `debugging-osprey-rules` Section 11 for the full checklist. |
+| "I'll just run osprey-cli directly" | It's not on PATH. It must be invoked via `uv run` from the osprey-for-atproto repo. | Always use `uv run osprey-cli push-rules <path> --dry-run` from the osprey repo. |
 | "86400 is clearer than Day" | It's not. Time constants from `models/base.sml` are the convention. | Replace all hardcoded time values: `86400` → `Day`, `3600` → `Hour`, `604800` → `Week`, etc. |
 | "This is urgent, skip validation" | Urgency is exactly when mistakes happen. | Follow the full workflow. Every time. Skipping steps under pressure is how broken rules ship. |
 
 ---
 
 **Next steps after completing rule writing:**
-1. Run validation: `osprey-cli push-rules <project-path> --dry-run`
+1. Run validation: `uv run osprey-cli push-rules <project-path> --dry-run`
 2. If errors: load `debugging-osprey-rules` and fix
 3. If success: confirm with user and document the rules created
