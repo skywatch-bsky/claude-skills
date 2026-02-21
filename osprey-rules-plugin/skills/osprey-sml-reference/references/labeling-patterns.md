@@ -445,7 +445,18 @@ WhenRules(
 
 **When to use:** Operator-initiated batch operations via Druid queries. Apply `MANUALLY_ADDED` or `MANUALLY_REMOVED` labels with expiration and rollback support.
 
-(Not rule-driven; handled by operators via `BulkLabelSink`.)
+This is NOT an SML rule — it is an operator-initiated API call. Template for reference:
+
+```python
+# Operator invocation (not in .sml files)
+BulkLabelSink(
+    query="SELECT did FROM accounts WHERE follower_count < 5 AND account_age_seconds < 86400",
+    label='bulk-review',
+    status='MANUALLY_ADDED',
+    expiration=TimeDelta(days=30),
+    rollback_previous=True,
+)
+```
 
 ### 21. Cooldown / Debounce
 
