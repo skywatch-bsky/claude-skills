@@ -88,6 +88,8 @@ if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 1 ]; then
 fi
 ```
 
+**CRITICAL: Report the FULL error output from osprey-cli. Do NOT summarize, truncate, or omit any errors.** Display all output from the osprey-cli command exactly as it was produced.
+
 ## Optional: Load Debugging Skill on Failure
 
 If validation failed (exit code 1), offer to help the user fix the errors. Load the `debugging-osprey-rules` skill using the Skill tool to provide detailed debugging assistance.
