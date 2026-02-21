@@ -28,7 +28,8 @@ Performs structured investigation of an Osprey SML rules project, producing a te
 
 ## Dependencies
 
-- None (standalone read-only plugin)
+- **Uses**: Nothing (standalone read-only plugin)
+- **Used by**: `osprey-rules` plugin -- orchestrator dispatches this agent as a subagent in Flows 1-3 (write, validate, fix) for project state discovery
 
 ## Key Files
 
