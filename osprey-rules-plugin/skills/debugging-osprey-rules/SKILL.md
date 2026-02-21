@@ -601,3 +601,71 @@ Exit code: 0
 
 All three errors disappeared because they all stemmed from the same missing import!
 
+---
+
+## 11. Proactive Checks (Beyond Validation)
+
+`osprey-cli` catches syntax and structural errors, but NOT all logic or convention violations. After fixing all validation errors and getting exit code 0, you MUST manually check for these:
+
+### Check 1: Type mixing in `when_all`
+
+Look at every `Rule(when_all=[...])` in the file. All items must be the same type.
+
+- `RegexMatch(...)`, comparisons (`X < Y`), `or`/`and` on bools → `bool`
+- `Rule(...)` → `RuleT`; `RuleT or RuleT` → `RuleT`
+- `not Rule(...)` → `RuleT`; `not bool_val` → `bool`
+
+**CRITICAL: `osprey-cli` may not catch type mixing if a prior error prevents type analysis.** You must check this yourself after all errors are resolved.
+
+```python
+# WRONG — mixing RuleT (SomeRule) and bool (_IsSpam) in when_all
+BadRule = Rule(
+  when_all=[
+    SomeRule,      # RuleT
+    _IsSpam,       # bool ← type mismatch!
+  ],
+)
+
+# FIX — keep all items as bool
+GoodRule = Rule(
+  when_all=[
+    _SomeCondition,  # bool
+    _IsSpam,         # bool
+  ],
+)
+```
+
+### Check 2: Hardcoded time values
+
+Search the file for raw numbers that look like time durations: `86400`, `3600`, `604800`, `600`, `300`, `60`.
+
+Replace with constants from `models/base.sml`: `Second`, `Minute`, `FiveMinute`, `TenMinute`, `ThirtyMinute`, `Hour`, `Day`, `Week`.
+
+```python
+# WRONG
+AccountAgeSeconds < 86400
+
+# CORRECT
+AccountAgeSeconds < Day
+```
+
+### Check 3: Convention violations
+
+After validation passes, scan the file for:
+- `rules_all=` → should be `rules_any=`
+- `(?i)` in regex patterns → should use `case_insensitive=True`
+- `JsonData` for entity IDs → should be `EntityJson`
+- Dead rules (rules not referenced by any `WhenRules` or other construct)
+
+---
+
+## Rationalizations to Block
+
+| Excuse | Reality |
+|--------|---------|
+| "osprey-cli passed, so the rule is correct" | Validation catches syntax, not all logic. Run proactive checks. |
+| "Type mixing might work at runtime" | It won't. SML has strict typing. Fix it now. |
+| "86400 is clearer than Day" | It's not. Use the constants. The conventions exist for a reason. |
+| "This is just a quick fix, I'll clean up later" | No. Fix it now. Every time. |
+| "The error is in someone else's file, not mine" | If you introduced it, fix it. If it's pre-existing, leave it. |
+
