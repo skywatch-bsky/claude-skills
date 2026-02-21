@@ -359,3 +359,176 @@ Read the static reference file at:
 ```
 
 Always include the staleness caveat when using static fallback.
+
+---
+
+## Section 3: Execution Graph Mapping
+
+Trace the full execution graph from `main.sml` through all `Import` and `Require`
+chains. Catalogue every `Rule()` definition and every `WhenRules()` invocation to
+produce a complete map of what the rules project detects and what actions it takes.
+
+### Step 3.1: Trace from main.sml
+
+Read `main.sml` at the project root. Extract:
+
+1. **Import statements:** `Import(rules=['path/to/file.sml'])` — these load models
+   and definitions into scope
+2. **Require statements:** `Require(rule='path/to/file.sml')` — these load rule
+   files into the execution graph
+3. **Conditional requires:** `Require(rule='path/to/file.sml', require_if=Condition)`
+   — note the condition that gates loading
+
+**Then follow each Require chain recursively.** For each required file:
+- Read it
+- Extract its Import and Require statements
+- Follow those Requires in turn
+- Continue until you reach leaf files (files with no further Requires)
+
+**Report format:**
+
+```
+## 3. Execution Graph
+
+### 3.1 Execution Graph Trace
+
+main.sml
+  ├── Import: models/base.sml
+  └── Require: rules/index.sml
+
+rules/index.sml
+  ├── Import: models/base.sml
+  ├── Require: rules/record/index.sml (require_if=IsOperation)
+  └── Require: rules/identity/index.sml (require_if=ActionName=='identity')
+
+rules/record/index.sml
+  ├── Import: models/base.sml, models/record/post.sml
+  ├── Require: rules/record/post/index.sml
+  └── Require: rules/record/follow/index.sml
+
+rules/record/post/index.sml
+  ├── Import: models/base.sml, models/record/post.sml
+  ├── Require: rules/record/post/spam_detection.sml
+  └── Require: rules/record/post/profanity.sml
+
+rules/record/post/spam_detection.sml  [LEAF]
+  └── Import: models/base.sml, models/record/post.sml, models/label_guards.sml
+
+rules/record/post/profanity.sml  [LEAF]
+  └── Import: models/base.sml, models/record/post.sml
+```
+
+Mark leaf files (those with no `Require` statements) with `[LEAF]`.
+Include the `require_if=` condition for conditional requires.
+
+### Step 3.2: Catalogue Rule() Definitions
+
+For each leaf file (and any file containing `Rule()` definitions), extract every
+`Rule()` definition.
+
+**What to extract:**
+- Variable name the Rule is assigned to (e.g., `SpamContentRule`)
+- Whether the variable has a `_` prefix (file-local, cannot be imported)
+- The `when_all` conditions (list each condition on its own line)
+- The `description` string if present
+
+**Report format:**
+
+```
+### 3.2 Rule Definitions
+
+#### rules/record/post/spam_detection.sml
+
+  Line | Rule Variable          | Scope  | Conditions (when_all)
+  ---- | ====================== | ====== | =====================
+  12   | _IsNewAccount          | local  | AccountAgeSeconds < Day
+       |                        |        | FollowersCount < 5
+  18   | _HasSuspiciousContent  | local  | ListContains(list='spam_keywords', phrases=[PostTextCleaned]) != None
+  24   | SpamDetection          | export | _IsNewAccount
+       |                        |        | _HasSuspiciousContent
+       |                        |        | not HasLabel(entity=UserId, label='verified')
+
+#### rules/record/post/profanity.sml
+
+  Line | Rule Variable          | Scope  | Conditions (when_all)
+  ---- | ====================== | ====== | =====================
+  10   | ProfanityDetected      | export | RegexMatch(pattern=r'...', target=PostText, case_insensitive=True)
+
+Total: N rules across M files
+```
+
+**Scope column:**
+- `local` = variable starts with `_` (file-private)
+- `export` = no `_` prefix (importable by other files)
+
+### Step 3.3: Catalogue WhenRules() Invocations
+
+For each file containing `WhenRules()`, extract:
+
+1. **Which rules trigger it:** The `rules_any=` list
+2. **What effects fire:** The `then=` list, including:
+   - Effect type (`LabelAdd`, `LabelRemove`, `AtprotoLabel`, `DeclareVerdict`, etc.)
+   - Target entity (e.g., `UserId`, `AtUri`, `PdsHost`)
+   - Label name or action
+   - Any conditional (`apply_if=`) or temporal (`expires_after=`) modifiers
+
+**Report format:**
+
+```
+### 3.3 WhenRules Invocations
+
+#### rules/record/post/spam_detection.sml
+
+  WhenRules at line 30:
+    Triggers (rules_any):
+      - SpamDetection
+    Effects (then):
+      - LabelAdd(entity=UserId, label='spam_suspect')
+      - LabelAdd(entity=AtUri, label='spam_content')
+
+  WhenRules at line 38:
+    Triggers (rules_any):
+      - SpamDetection
+    Effects (then):
+      - AtprotoLabel(entity=UserId, label='spam', comment='Automated spam detection')
+
+#### rules/record/post/profanity.sml
+
+  WhenRules at line 16:
+    Triggers (rules_any):
+      - ProfanityDetected
+    Effects (then):
+      - LabelAdd(entity=UserId, label='profanity', expires_after=TimeDelta(days=7))
+
+Total: N WhenRules invocations across M files
+```
+
+### Step 3.4: Rule → Conditions → Effect → Label Summary
+
+Produce a flat summary table linking every rule to its final outcomes. This is the
+most actionable output for rule-writing agents — it shows at a glance what each
+rule does.
+
+**Report format:**
+
+```
+### 3.4 Rule Summary
+
+| Rule | File | Conditions | Effect | Label | Entity |
+|------|------|-----------|--------|-------|--------|
+| SpamDetection | spam_detection.sml:24 | _IsNewAccount AND _HasSuspiciousContent AND NOT verified | LabelAdd | spam_suspect | UserId |
+| SpamDetection | spam_detection.sml:24 | (same) | LabelAdd | spam_content | AtUri |
+| SpamDetection | spam_detection.sml:24 | (same) | AtprotoLabel | spam | UserId |
+| ProfanityDetected | profanity.sml:10 | RegexMatch profanity pattern | LabelAdd | profanity | UserId |
+
+Conditional graph gates:
+  - rules/record/* only loaded when IsOperation is true
+  - rules/identity/* only loaded when ActionName == 'identity'
+```
+
+A single rule may appear on multiple rows if it triggers multiple effects
+(via the same or different `WhenRules()` blocks).
+
+Include conditional graph gates at the bottom to note which rules are only
+active under specific event conditions.
+```
