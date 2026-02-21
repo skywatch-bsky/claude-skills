@@ -33,6 +33,12 @@ Checking project at /path/to/rules:
   ✓ rules/ directory found
 ```
 
+**Also ask for the osprey-for-atproto repo path:**
+1. Use `AskUserQuestion` to request the path to the `osprey-for-atproto` repository.
+2. This path is needed for dynamic UDF discovery and `osprey-cli` validation.
+3. If the user doesn't have it locally, note that UDF discovery will use a static fallback.
+4. Store this path for the duration of the session.
+
 ## 2. Read Project State
 
 Before writing any rules, read and understand the existing project configuration.
