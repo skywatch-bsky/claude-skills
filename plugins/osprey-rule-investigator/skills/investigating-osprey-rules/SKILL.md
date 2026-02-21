@@ -194,3 +194,168 @@ variable definitions.
 
 Include line numbers for every variable definition. If `models/` does not exist,
 report it as missing and skip this step.
+
+---
+
+## Section 2: UDF Discovery
+
+Discover all available User-Defined Functions (UDFs) that can be called from SML
+rules. Use **dynamic discovery** (reading Python source) when the osprey-for-atproto
+repo is accessible, falling back to **static discovery** (reading the reference file)
+when it is not.
+
+### Step 2.1: Attempt Dynamic Discovery
+
+Try to locate `register_plugins.py` in the osprey-for-atproto repo path provided
+by the caller.
+
+**Expected location:** `{osprey-for-atproto-path}/plugins_atproto/src/register_plugins.py`
+
+Use Read to check if this file exists.
+
+**If the file exists:** Proceed with dynamic discovery (Steps 2.2-2.4).
+
+**If the file does NOT exist:** Skip to Step 2.5 (Static Fallback). Report:
+
+```
+### 2.1 UDF Discovery Mode
+
+  ✗ register_plugins.py not found at expected location
+  → Falling back to static reference (may be outdated)
+  Discovery mode: STATIC (low confidence)
+```
+
+### Step 2.2: Extract UDF Class Names
+
+Read `register_plugins.py` and find the `register_udfs()` function. Extract every
+class name returned in the list.
+
+**What to look for:**
+- A function decorated with `@hookimpl_osprey` named `register_udfs`
+- It returns a list of class references (e.g., `TextContains`, `IncrementWindow`)
+- The imports at the top of the file show where each class is imported from
+
+**Report format:**
+
+```
+### 2.1 UDF Discovery Mode
+
+  ✓ register_plugins.py found
+  Discovery mode: DYNAMIC (high confidence)
+
+### 2.2 Registered UDFs
+
+  Found N UDFs registered in register_udfs():
+
+  Standard:
+    TextContains          ← udfs/std/text.py
+    Tokenize              ← udfs/std/tokenize.py
+    CleanString           ← udfs/std/censorize.py
+    ...
+
+  Cache:
+    CacheGetStr           ← udfs/std/cache.py
+    IncrementWindow       ← udfs/std/cache.py
+    ...
+
+  AT Protocol Query:
+    DidFromUri            ← udfs/atproto/std/did_from_uri.py
+    GetRecordURI          ← udfs/atproto/atproto.py
+    ...
+
+  AT Protocol Effects:
+    AddAtprotoLabel       ← udfs/atproto/atproto_label.py
+    RemoveAtprotoLabel    ← udfs/atproto/atproto_label.py
+    ...
+```
+
+Group UDFs by the comment sections in `register_udfs()` (e.g., `# Std`,
+`# Atproto std`, `# Atproto effects`).
+
+### Step 2.3: Extract UDF Signatures
+
+For each UDF class found in Step 2.2, locate its source file (from the import
+statements) and extract:
+
+1. **Arguments class:** Find the class referenced as the first type parameter of
+   `UDFBase[ArgumentsClass, ReturnType]`. Read its fields to get parameter names,
+   types, and defaults.
+
+2. **Return type:** The second type parameter of `UDFBase[ArgumentsClass, ReturnType]`.
+
+**How to identify arguments:**
+- Look for `class ClassName(UDFBase[SomeArgs, ReturnType]):`
+- Then find `class SomeArgs(ArgumentsBase):` (or a subclass of ArgumentsBase)
+- Each field annotation is a parameter: `name: type` or `name: type = default`
+- Some argument classes inherit from intermediate classes (e.g.,
+  `CacheWindowArgumentsBase` extends `CacheArgumentsBase` which extends
+  `ArgumentsBase`) — follow the inheritance chain to get all fields
+
+**Report format:**
+
+```
+### 2.3 UDF Signatures
+
+#### TextContains
+  Source: udfs/std/text.py:47
+  Arguments: TextContainsArguments (udfs/std/text.py:41)
+    s: str                        (required)
+    phrase: str                   (required)
+    case_sensitive: bool          (default: False)
+  Returns: bool
+
+#### IncrementWindow
+  Source: udfs/std/cache.py:364
+  Arguments: IncrementWindowArguments (udfs/std/cache.py:279)
+    Inherits from CacheWindowArgumentsBase → CacheArgumentsBase → ArgumentsBase
+    key: str                      (required, from CacheArgumentsBase)
+    window_seconds: float         (required, from CacheWindowArgumentsBase)
+    when_all: List[bool]          (required, from CacheWindowArgumentsBase)
+    max_ttl_seconds: Optional[float]  (default: None)
+  Returns: int
+```
+
+Include line numbers for every class definition.
+
+### Step 2.4: Produce Signature Summary Table
+
+After extracting all signatures, produce a summary table for quick reference:
+
+```
+### 2.4 UDF Signature Summary
+
+| UDF | Parameters | Returns |
+|-----|-----------|---------|
+| TextContains | s: str, phrase: str, case_sensitive=False | bool |
+| ForceString | s: Optional[str] | str |
+| ExtractDomains | s: str | List[str] |
+| ... | ... | ... |
+
+Total: N UDFs with signatures extracted
+Discovery: DYNAMIC from {osprey-for-atproto-path}
+```
+
+### Step 2.5: Static Fallback
+
+**Use this step ONLY when dynamic discovery failed (Step 2.1).**
+
+Read the static reference file at:
+`{skill-directory}/references/udf-signatures.md`
+
+(The skill directory is the directory containing this SKILL.md file.)
+
+**Report format:**
+
+```
+### 2.1 UDF Discovery Mode
+
+  ✗ Dynamic discovery unavailable
+  → Using static reference: references/udf-signatures.md
+  Discovery mode: STATIC (low confidence — signatures may be outdated)
+
+### 2.2-2.4 UDF Signatures (from static reference)
+
+[Include the full content of references/udf-signatures.md]
+```
+
+Always include the staleness caveat when using static fallback.
