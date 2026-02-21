@@ -143,60 +143,6 @@ BadMultiple2 = IncrementWindow(
 )
 ```
 
----
-
-## Reviewer Checklist
-
-Structured checklist for the `osprey-rule-reviewer` agent. Each check has an ID
-for use in review reports. Checks reference the prose sections above for details.
-
-### Naming Checks
-
-- **CONV-N1:** All variables use PascalCase (see: Variable Naming)
-- **CONV-N2:** Internal/intermediate variables use `_PascalCase` prefix (see: Variable Naming)
-- **CONV-N3:** Rule variables have `Rule` suffix (see: Variable Naming)
-- **CONV-N4:** IncrementWindow variable names describe what is counted (see: Variable Naming)
-
-### Time Checks
-
-- **CONV-T1:** No hardcoded time values — all use named constants from `models/base.sml` (see: Time Constants)
-- **CONV-T2:** `window_seconds` parameters use time constants (see: IncrementWindow Conventions)
-- **CONV-T3:** Account age comparisons use time constants (see: General)
-
-### RegexMatch Checks
-
-- **CONV-R1:** `case_insensitive=True` parameter used instead of `(?i)` in pattern (see: RegexMatch Conventions)
-- **CONV-R2:** RegexMatch used inline unless pattern is reused across multiple rules (see: RegexMatch Conventions, Anti-Pattern 10)
-
-### IncrementWindow Checks
-
-- **CONV-IW1:** Key strings use f-strings with kebab-case prefix and `{UserId}` suffix (see: IncrementWindow Conventions)
-- **CONV-IW2:** No duplicate IncrementWindows with identical `when_all` (see: IncrementWindow Conventions, Anti-Pattern 8)
-- **CONV-IW3:** Key names are descriptive of what is counted (see: Anti-Pattern 9)
-
-### Rule Checks
-
-- **CONV-RU1:** Every `Rule` is referenced by a `WhenRules`, another rule's `when_all`, or an `IncrementWindow`'s `when_all` — no dead rules (see: Rule Conventions, Anti-Pattern 6)
-- **CONV-RU2:** Rule descriptions use f-strings with `{Handle}` or `{UserId}` where applicable (see: Rule Conventions)
-- **CONV-RU3:** Uses infix `or` (`A or B or C`), not function-call `or(A, B, C)` (see: Rule Conventions, Anti-Pattern 7)
-
-### Type Checks
-
-- **CONV-TY1:** All items in `when_all` are the same type — all `bool` or all `RuleT`, no mixing (see: Type Rules in when_all, Anti-Pattern 2)
-- **CONV-TY2:** Entity IDs use `EntityJson`, not `JsonData` (see: Anti-Pattern 1)
-
-### WhenRules Checks
-
-- **CONV-WR1:** Uses `rules_any=`, never `rules_all=` (see: WhenRules, Anti-Pattern 5)
-- **CONV-WR2:** Every actionable rule has a `WhenRules` block (see: WhenRules)
-
-### Structure Checks
-
-- **CONV-S1:** No unused variables (see: General)
-- **CONV-S2:** Rule files in correct event-type directories (see: General)
-- **CONV-S3:** No hardcoded label names — labels verified against `config/labels.yaml` (see: General)
-- **CONV-S4:** Every rule file is `Require()`d in an `index.sml` reachable from root
-
 ## Rule Conventions
 
 Every `Rule` must be referenced somewhere (in a `WhenRules`, in another rule's `when_all`, or in an `IncrementWindow`'s `when_all`). No dead rules. Descriptions use f-strings with `{Handle}` or `{UserId}`.
@@ -468,3 +414,57 @@ _PhonePattern = RegexMatch(pattern=r'\d+', target=PostText)
 Rule1(when_all=[_PhonePattern])
 Rule2(when_all=[_PhonePattern])
 ```
+
+---
+
+## Reviewer Checklist
+
+Structured checklist for the `osprey-rule-reviewer` agent. Each check has an ID
+for use in review reports. Checks reference the prose sections above for details.
+
+### Naming Checks
+
+- **CONV-N1:** All variables use PascalCase (see: Variable Naming)
+- **CONV-N2:** Internal/intermediate variables use `_PascalCase` prefix (see: Variable Naming)
+- **CONV-N3:** Rule variables have `Rule` suffix (see: Variable Naming)
+- **CONV-N4:** IncrementWindow variable names describe what is counted (see: Variable Naming)
+
+### Time Checks
+
+- **CONV-T1:** No hardcoded time values — all use named constants from `models/base.sml` (see: Time Constants)
+- **CONV-T2:** `window_seconds` parameters use time constants (see: IncrementWindow Conventions)
+- **CONV-T3:** Account age comparisons use time constants (see: General)
+
+### RegexMatch Checks
+
+- **CONV-R1:** `case_insensitive=True` parameter used instead of `(?i)` in pattern (see: RegexMatch Conventions)
+- **CONV-R2:** RegexMatch used inline unless pattern is reused across multiple rules (see: RegexMatch Conventions, Anti-Pattern 10)
+
+### IncrementWindow Checks
+
+- **CONV-IW1:** Key strings use f-strings with kebab-case prefix and `{UserId}` suffix (see: IncrementWindow Conventions)
+- **CONV-IW2:** No duplicate IncrementWindows with identical `when_all` (see: IncrementWindow Conventions, Anti-Pattern 8)
+- **CONV-IW3:** Key names are descriptive of what is counted (see: Anti-Pattern 9)
+
+### Rule Checks
+
+- **CONV-RU1:** Every `Rule` is referenced by a `WhenRules`, another rule's `when_all`, or an `IncrementWindow`'s `when_all` — no dead rules (see: Rule Conventions, Anti-Pattern 6)
+- **CONV-RU2:** Rule descriptions use f-strings with `{Handle}` or `{UserId}` where applicable (see: Rule Conventions)
+- **CONV-RU3:** Uses infix `or` (`A or B or C`), not function-call `or(A, B, C)` (see: Rule Conventions, Anti-Pattern 7)
+
+### Type Checks
+
+- **CONV-TY1:** All items in `when_all` are the same type — all `bool` or all `RuleT`, no mixing (see: Type Rules in when_all, Anti-Pattern 2)
+- **CONV-TY2:** Entity IDs use `EntityJson`, not `JsonData` (see: Anti-Pattern 1)
+
+### WhenRules Checks
+
+- **CONV-WR1:** Uses `rules_any=`, never `rules_all=` (see: WhenRules, Anti-Pattern 5)
+- **CONV-WR2:** Every actionable rule has a `WhenRules` block (see: WhenRules)
+
+### Structure Checks
+
+- **CONV-S1:** No unused variables (see: General)
+- **CONV-S2:** Rule files in correct event-type directories (see: General)
+- **CONV-S3:** No hardcoded label names — labels verified against `config/labels.yaml` (see: General)
+- **CONV-S4:** Every rule file is `Require()`d in an `index.sml` reachable from root
