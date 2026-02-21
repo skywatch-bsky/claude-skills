@@ -1,25 +1,51 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "claude-skills",
+  "name": "osprey-skills",
   "owner": {
     "name": "Skywatch Blue"
   },
   "metadata": {
     "description": "Claude Code plugins for writing and validating Osprey for Atproto skills",
-    "version": "0.1.0",
+    "version": "0.2",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "osprey-rules",
       "source": "./plugins/osprey-rules",
-      "description": "Teaches Claude Code how to write, edit, and validate Osprey SML moderation rules for atproto.",
+      "description": "Orchestrator plugin for writing, reviewing, and debugging Osprey SML moderation rules for atproto. Dispatches specialized subagents (planner, implementor, reviewer, debugger) via a thin coordinator.",
+      "version": "0.2.0",
+      "author": {
+        "name": "Skywatch Blue"
+      },
+      "license": "MIT",
+      "keywords": [
+        "osprey",
+        "sml",
+        "moderation",
+        "atproto",
+        "bluesky",
+        "rules",
+        "orchestrator"
+      ]
+    },
+    {
+      "name": "osprey-rule-investigator",
+      "source": "./plugins/osprey-rule-investigator",
+      "description": "Read-only analysis agent that investigates Osprey SML rules projects and produces structured reports on labels, models, UDFs, and execution graphs.",
       "version": "0.1.0",
       "author": {
         "name": "Skywatch Blue"
       },
       "license": "MIT",
-      "keywords": ["osprey", "sml", "moderation", "atproto", "bluesky", "rules"]
+      "keywords": [
+        "osprey",
+        "sml",
+        "investigation",
+        "analysis",
+        "atproto",
+        "moderation"
+      ]
     }
   ]
 }
