@@ -1,3 +1,6 @@
+// pattern: Imperative Shell
+// ClickHouse HTTP client abstraction for query execution
+
 import { createClient } from "@clickhouse/client";
 import { validateQuery } from "./sql-validation";
 
@@ -19,12 +22,18 @@ type ClickHouseClientInterface = {
   getSchema(): Promise<QueryResult>;
 };
 
+interface ParsedResponse {
+  meta?: Array<{ name: string; type: string }>;
+  data?: unknown[];
+}
+
 export function createClickHouseClient(
   config: ClickHouseClientConfig
 ): ClickHouseClientInterface {
+  const url = `${config.host}:${config.port}`;
+
   const client = createClient({
-    host: config.host,
-    port: config.port,
+    url,
     username: config.username,
     password: config.password,
     database: config.database,
@@ -39,54 +48,73 @@ export function createClickHouseClient(
 
       const response = await client.query({
         query: validation.normalized,
-        format: "JSONCompactColumnsWithNames",
+        format: "JSONEachRow",
         clickhouse_settings: {
           max_execution_time: 60,
         },
       });
 
       const text = await response.text();
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(text) as unknown;
 
-      const columns = Array.isArray(parsed.meta)
-        ? parsed.meta.map(
-            (col: { name: string; type: string }) => ({
-              name: col.name,
-              type: col.type,
-            })
-          )
-        : [];
+      let columns: Array<{ name: string; type: string }> = [];
+      let rows: Array<Record<string, unknown>> = [];
 
-      const rows = Array.isArray(parsed.data) ? parsed.data : [];
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        const obj = parsed as Record<string, unknown>;
+        if (Array.isArray(obj["meta"])) {
+          columns = (obj["meta"] as unknown[]).map((col: unknown) => {
+            if (
+              typeof col === "object" &&
+              col !== null &&
+              "name" in col &&
+              "type" in col
+            ) {
+              return {
+                name: String((col as Record<string, unknown>)["name"]),
+                type: String((col as Record<string, unknown>)["type"]),
+              };
+            }
+            return { name: "", type: "" };
+          });
+        }
+        if (Array.isArray(obj["data"])) {
+          rows = obj["data"] as Array<Record<string, unknown>>;
+        }
+      }
 
-      return {
-        columns,
-        rows,
-      };
+      return { columns, rows };
     },
 
     async getSchema(): Promise<QueryResult> {
       const response = await client.query({
         query: "DESCRIBE TABLE default.osprey_execution_results",
-        format: "JSONCompactColumnsWithNames",
+        format: "JSONEachRow",
       });
 
       const text = await response.text();
-      const parsed = JSON.parse(text);
+      const parsed = JSON.parse(text) as unknown;
 
-      const rows = Array.isArray(parsed.data) ? parsed.data : [];
+      let rows: Array<Record<string, unknown>> = [];
 
-      const columns = rows.map((row: Record<string, unknown>) => ({
-        name: String(row.name || ""),
-        type: String(row.type || ""),
-      }));
+      if (Array.isArray(parsed)) {
+        rows = parsed;
+      }
+
+      const schemaColumns = rows.map((row: unknown) => {
+        if (typeof row === "object" && row !== null) {
+          const r = row as Record<string, unknown>;
+          return {
+            name: String(r["name"] || ""),
+            type: String(r["type"] || ""),
+          };
+        }
+        return { name: "", type: "" };
+      });
 
       return {
-        columns: [
-          { name: "name", type: "String" },
-          { name: "type", type: "String" },
-        ],
-        rows: rows as ReadonlyArray<Record<string, unknown>>,
+        columns: schemaColumns,
+        rows,
       };
     },
   };

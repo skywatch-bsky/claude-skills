@@ -1,3 +1,6 @@
+// pattern: Functional Core
+// Pure validation logic for SQL query constraints
+
 export type ValidationResult =
   | { valid: true; normalized: string }
   | { valid: false; reason: string };
@@ -11,9 +14,12 @@ export function validateQuery(sql: string): ValidationResult {
 
   const normalized = trimmed.replace(/\s+/g, " ");
   const tokens = normalized.split(/\s+/);
-  const firstToken = tokens[0].toUpperCase();
+  const firstToken = tokens[0];
+  if (!firstToken) {
+    return { valid: false, reason: "Query cannot be empty" };
+  }
 
-  if (firstToken !== "SELECT") {
+  if (firstToken.toUpperCase() !== "SELECT") {
     return {
       valid: false,
       reason: `Only SELECT queries are allowed. Query starts with '${firstToken}'`,
@@ -29,8 +35,36 @@ export function validateQuery(sql: string): ValidationResult {
     };
   }
 
+  if (/;/.test(upperNormalized)) {
+    return {
+      valid: false,
+      reason: "Query cannot contain semicolons (multi-statement execution not allowed)",
+    };
+  }
+
+  if (/\bUNION\b/i.test(upperNormalized)) {
+    return {
+      valid: false,
+      reason: "Query cannot contain UNION keyword (cross-table access not allowed)",
+    };
+  }
+
+  if (/\bJOIN\b/i.test(upperNormalized)) {
+    return {
+      valid: false,
+      reason: "Query cannot contain JOIN keyword (table joining not allowed)",
+    };
+  }
+
+  if (/\bINTO\b/i.test(upperNormalized)) {
+    return {
+      valid: false,
+      reason: "Query cannot contain INTO keyword (data export not allowed)",
+    };
+  }
+
   const fromMatch = upperNormalized.match(/\bFROM\s+(\S+)/);
-  if (!fromMatch) {
+  if (!fromMatch || !fromMatch[1]) {
     return {
       valid: false,
       reason: "Query must contain a FROM clause",

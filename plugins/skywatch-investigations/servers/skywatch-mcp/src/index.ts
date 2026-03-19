@@ -1,3 +1,6 @@
+// pattern: Imperative Shell
+// MCP server entry point and runtime initialization
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createClickHouseClient } from "./lib/clickhouse-client.ts";

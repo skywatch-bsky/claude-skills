@@ -1,3 +1,6 @@
+// pattern: Imperative Shell
+// MCP tool handler registration for ClickHouse query and schema operations
+
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { createClickHouseClient } from "../lib/clickhouse-client.ts";
@@ -31,11 +34,11 @@ export async function registerClickHouseTools(
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         return {
+          isError: true,
           content: [
             {
               type: "text",
               text: errorMessage,
-              isError: true,
             },
           ],
         };
@@ -46,8 +49,7 @@ export async function registerClickHouseTools(
   server.tool(
     "clickhouse_schema",
     "Get the column definitions (names and types) for the osprey_execution_results table.",
-    {
-    },
+    {},
     async () => {
       try {
         const result = await client.getSchema();
@@ -63,11 +65,11 @@ export async function registerClickHouseTools(
         const errorMessage =
           error instanceof Error ? error.message : String(error);
         return {
+          isError: true,
           content: [
             {
               type: "text",
               text: errorMessage,
-              isError: true,
             },
           ],
         };

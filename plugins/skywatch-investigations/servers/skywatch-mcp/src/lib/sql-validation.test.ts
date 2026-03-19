@@ -235,4 +235,93 @@ describe("validateQuery", () => {
       }
     });
   });
+
+  describe("SQL injection prevention", () => {
+    it("should reject UNION queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results UNION SELECT * FROM users LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("UNION");
+      }
+    });
+
+    it("should reject UNION ALL queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results UNION ALL SELECT * FROM users LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("UNION");
+      }
+    });
+
+    it("should reject queries with semicolon (multi-statement)", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results LIMIT 10; DROP TABLE users"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("semicolon");
+      }
+    });
+
+    it("should reject queries with semicolon at end", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results LIMIT 10;"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("semicolon");
+      }
+    });
+
+    it("should reject JOIN queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results JOIN users ON 1=1 LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("JOIN");
+      }
+    });
+
+    it("should reject LEFT JOIN queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results LEFT JOIN users LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("JOIN");
+      }
+    });
+
+    it("should reject INTO OUTFILE queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results INTO OUTFILE '/tmp/data' LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("INTO");
+      }
+    });
+
+    it("should reject INTO DUMPFILE queries", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results INTO DUMPFILE '/tmp/data' LIMIT 10"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("INTO");
+      }
+    });
+
+    it("should accept query with comment without semicolon", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results LIMIT 10 -- this is a comment"
+      );
+      expect(result.valid).toBe(true);
+    });
+  });
 });
