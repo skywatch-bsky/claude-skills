@@ -18,8 +18,15 @@ export function parseSshOutput(stdout: string): QueryResult {
   let columnTypes: string[] = [];
 
   try {
-    const namesLine = JSON.parse(lines[0]);
-    const typesLine = JSON.parse(lines[1]);
+    const firstLine = lines[0];
+    const secondLine = lines[1];
+
+    if (!firstLine || !secondLine) {
+      return { columns: [], rows: [] };
+    }
+
+    const namesLine = JSON.parse(firstLine);
+    const typesLine = JSON.parse(secondLine);
 
     if (!Array.isArray(namesLine) || !Array.isArray(typesLine)) {
       return { columns: [], rows: [] };
@@ -31,23 +38,30 @@ export function parseSshOutput(stdout: string): QueryResult {
     return { columns: [], rows: [] };
   }
 
-  const columns = columnNames.map((name, index) => ({
-    name,
-    type: columnTypes[index] ?? "",
-  }));
+  const columns = columnNames.map((name, index) => {
+    const colType = columnTypes[index];
+    return {
+      name,
+      type: colType ? String(colType) : "",
+    };
+  });
 
   const rows: Array<Record<string, unknown>> = [];
 
   for (let i = 2; i < lines.length; i++) {
+    const currentLine = lines[i];
+    if (!currentLine) continue;
+
     try {
-      const values = JSON.parse(lines[i]);
+      const values = JSON.parse(currentLine);
       if (!Array.isArray(values)) {
         continue;
       }
 
       const row: Record<string, unknown> = {};
       columnNames.forEach((name, index) => {
-        row[name] = values[index];
+        const value = values[index];
+        row[name] = value;
       });
 
       rows.push(row);
