@@ -4,6 +4,10 @@ The `osprey_execution_results` table in ClickHouse stores the execution history 
 
 <!-- TODO: populate from live ClickHouse — Run DESCRIBE TABLE default.osprey_execution_results and enumerate all columns below with actual ClickHouse types -->
 
+> **⚠ Inferred Columns**
+>
+> The columns listed below are inferred from exploratory queries and sample data. They should be verified against the actual schema using `DESCRIBE TABLE default.osprey_execution_results` in ClickHouse. Column types, presence, and semantics may differ from what's documented here. Always validate the live schema before relying on this reference for query optimization or data interpretation.
+
 ## Core Columns
 
 | Column | Type | Description |

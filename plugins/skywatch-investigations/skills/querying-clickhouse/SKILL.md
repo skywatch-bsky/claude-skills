@@ -110,7 +110,7 @@ The following columns are indexed and filter efficiently:
 Use these in WHERE clauses whenever possible.
 
 ```sql
-SELECT * FROM default.osprey_execution_results
+SELECT did, handle, rule_name, score, created_at FROM default.osprey_execution_results
 WHERE rule_name = 'spam-bot-pattern'
   AND created_at > now() - interval 1 day
 LIMIT 100
@@ -120,7 +120,7 @@ LIMIT 100
 
 ### Content Search Is Expensive
 
-The `ngramDistance()` function searches for similar text by n-gram comparison. It's powerful but slow.
+The `ngramDistance()` function searches for similar text by n-gram comparison. It's powerful but slow. Note: ngramDistance() returns 0 for identical content and 1 for completely different content.
 
 Always pair `ngramDistance()` with other filters:
 
@@ -129,12 +129,13 @@ Always pair `ngramDistance()` with other filters:
 SELECT did, handle, content
 FROM default.osprey_execution_results
 WHERE created_at > now() - interval 1 day
-  AND ngramDistance(content, 'target phrase') > 0.5
+  AND ngramDistance(content, 'target phrase') < 0.5
+ORDER BY ngramDistance(content, 'target phrase') ASC
 LIMIT 50
 
 -- Bad: ngramDistance alone scans all content
 SELECT ...
-WHERE ngramDistance(content, 'target phrase') > 0.5
+WHERE ngramDistance(content, 'target phrase') < 0.5
 LIMIT 100
 ```
 

@@ -62,7 +62,7 @@ LIMIT 100
 
 **SQL:**
 ```sql
-SELECT DISTINCT
+SELECT
   did,
   handle,
   count() as hit_count,
@@ -199,14 +199,14 @@ SELECT
   ngramDistance(content, 'target content phrase') as similarity
 FROM default.osprey_execution_results
 WHERE created_at > now() - interval 1 day
-  AND ngramDistance(content, 'target content phrase') > 0.5
-ORDER BY similarity DESC
+  AND ngramDistance(content, 'target content phrase') < 0.5
+ORDER BY similarity ASC
 LIMIT 50
 ```
 
-**Output:** Ranked by similarity (higher = more similar). `similarity` is a score from 0 (no match) to 1 (identical).
+**Output:** Ranked by similarity (lower = more similar). `similarity` is a score from 0 (identical) to 1 (completely different).
 
-**Notes:** Replace `target content phrase` with actual text. The threshold (>0.5) can be adjusted: 0.7+ for near-exact matches, 0.3-0.5 for loose similarity. Time-narrow for performance.
+**Notes:** Replace `target content phrase` with actual text. The threshold (<0.5) can be adjusted: 0.3 for near-exact matches, 0.5-0.7 for loose similarity. Time-narrow for performance.
 
 ---
 
@@ -289,27 +289,27 @@ LIMIT 50
 
 ---
 
-## 12. Accounts Created in the Same Time Window
+## 12. New Account Rule Triggers by Day
 
-**Purpose:** Detect potential bot armies or coordinated account creation campaigns.
+**Purpose:** Detect potential bot armies or coordinated account creation campaigns by tracking when new accounts trigger rules.
 
 **SQL:**
 ```sql
 SELECT
-  toStartOfDay(created_at) as creation_day,
-  count(DISTINCT did) as new_accounts,
+  toStartOfDay(created_at) as day,
+  count(DISTINCT did) as new_accounts_triggered,
   count() as rule_hits
 FROM default.osprey_execution_results
 WHERE account_age_days < 7
   AND created_at > now() - interval 30 day
-GROUP BY creation_day
-ORDER BY new_accounts DESC
+GROUP BY day
+ORDER BY new_accounts_triggered DESC
 LIMIT 50
 ```
 
-**Output:** Days when many new accounts triggered rules. Spikes indicate coordinated creation campaigns.
+**Output:** Days when new accounts triggered rules. Spikes indicate coordinated creation campaigns or waves of bot activity.
 
-**Notes:** Adjust `account_age_days < 7` to control age window (e.g., `< 1` for accounts created today). This helps spot waves of bot activity.
+**Notes:** Adjust `account_age_days < 7` to control age window (e.g., `< 1` for accounts created today). High spikes of new accounts triggering rules in the same day suggest coordinated activity.
 
 ---
 
@@ -412,7 +412,7 @@ SELECT
   min(created_at) as first_hit,
   max(created_at) as latest_hit,
   avg(score) as avg_score,
-  percentile(0.95)(score) as p95_score
+  quantile(0.95)(score) as p95_score
 FROM default.osprey_execution_results
 WHERE rule_name IN ('new-rule-v1', 'new-rule-v2')
 GROUP BY rule_name, matched
@@ -420,7 +420,7 @@ ORDER BY rule_name, matched DESC
 LIMIT 50
 ```
 
-**Output:** Coverage stats for new rules. `percentile(0.95)(score)` shows the 95th percentile score (helps tune thresholds).
+**Output:** Coverage stats for new rules. `quantile(0.95)(score)` shows the 95th percentile score (helps tune thresholds).
 
 **Notes:** Use for monitoring newly deployed rules during their first week. Adjust rule names as needed.
 
@@ -436,9 +436,9 @@ SELECT
   rule_name,
   count() as total,
   min(score) as min_score,
-  percentile(0.25)(score) as p25,
-  percentile(0.50)(score) as p50_median,
-  percentile(0.75)(score) as p75,
+  quantile(0.25)(score) as p25,
+  quantile(0.50)(score) as p50_median,
+  quantile(0.75)(score) as p75,
   max(score) as max_score,
   avg(score) as avg_score,
   stddevPop(score) as std_dev
@@ -512,43 +512,17 @@ LIMIT 100
 **SQL:**
 ```sql
 SELECT
-  'created_at' as column_name,
-  count() FILTER (WHERE created_at IS NULL) as null_count,
+  countIf(created_at IS NULL) as created_at_nulls,
+  countIf(did IS NULL) as did_nulls,
+  countIf(rule_name IS NULL) as rule_name_nulls,
+  countIf(matched IS NULL) as matched_nulls,
   count() as total_rows
 FROM default.osprey_execution_results
 WHERE created_at > now() - interval 7 day
-
-UNION ALL
-
-SELECT
-  'did',
-  count() FILTER (WHERE did IS NULL),
-  count()
-FROM default.osprey_execution_results
-WHERE created_at > now() - interval 7 day
-
-UNION ALL
-
-SELECT
-  'rule_name',
-  count() FILTER (WHERE rule_name IS NULL),
-  count()
-FROM default.osprey_execution_results
-WHERE created_at > now() - interval 7 day
-
-UNION ALL
-
-SELECT
-  'matched',
-  count() FILTER (WHERE matched IS NULL),
-  count()
-FROM default.osprey_execution_results
-WHERE created_at > now() - interval 7 day
-
-LIMIT 100
+LIMIT 1
 ```
 
-**Output:** NULL value counts per critical column. High NULLs indicate data quality issues.
+**Output:** NULL value counts per critical column plus total row count. High NULLs indicate data quality issues.
 
 **Notes:** Run periodically to monitor data integrity. NULLs in `did`, `rule_name`, or `matched` suggest upstream problems.
 

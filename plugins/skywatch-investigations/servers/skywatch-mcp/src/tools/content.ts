@@ -51,7 +51,7 @@ export async function registerContentTool(
         .max(1)
         .default(0.4)
         .describe(
-          "Similarity threshold (0=identical, 1=completely different). Default 0.4"
+          "Distance threshold (0=identical, 1=completely different). Lower values find more similar content. Default 0.4"
         ),
       limit: z
         .number()
