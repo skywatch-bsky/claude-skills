@@ -1,6 +1,9 @@
 # User data and analysis
 .obsidian/**
 
+# Dependencies
+**/node_modules
+
 # Python cache
 **/__pycache__
 
