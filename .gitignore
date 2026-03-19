@@ -1,6 +1,9 @@
 # User data and analysis
 .obsidian/**
 
+# Dependencies
+**/node_modules
+
 # Python cache
 **/__pycache__
 
@@ -18,4 +21,5 @@
 CLAUDE.md
 !plugins/osprey-rules/CLAUDE.md
 !plugins/osprey-rule-investigator/CLAUDE.md
+!plugins/skywatch-investigations/CLAUDE.md
 metacognition.md

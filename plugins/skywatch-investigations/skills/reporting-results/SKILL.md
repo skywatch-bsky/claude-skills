@@ -1,0 +1,381 @@
+---
+name: reporting-results
+description: Report formats, B-I-N-D-Ts structure, data presentation, and output conventions for investigation reports. Use when writing or reviewing investigation reports. Includes templates for memo, cell deep-dive, cross-cell, and rule check report types.
+user-invocable: false
+---
+
+# Reporting Results
+
+This skill standardises the structure and presentation of investigation findings. All reports follow the B-I-N-D-Ts format and are stored using consistent naming and directory conventions.
+
+## B-I-N-D-Ts Report Structure
+
+The B-I-N-D-Ts framework ensures investigation findings are concise, actionable, and well-supported by evidence.
+
+### Bottom Line
+
+A single sentence stating what was found and what it means. This should be the most critical finding from the investigation — the thing someone needs to know immediately.
+
+**Examples:**
+- "A coordinated network of 47 accounts is amplifying election-related disinformation, with 80% coverage by existing rules but significant reach through quote posts."
+- "A single compromised account is posting spam with a consistent pattern; no coordination detected."
+- "Rule coverage for this behaviour type is 45%, leaving significant detection gaps."
+
+**Guidelines:**
+- Write in active voice, present tense
+- Be specific about scale and scope
+- Mention the most significant finding (harm, reach, or implication)
+- Avoid hedging — use "is" not "appears to be" (evidence determines confidence)
+
+### Impact
+
+Quantify the scale and reach of the finding. This answers "how much does this matter?"
+
+**Include:**
+- Number of accounts involved
+- Time range of activity
+- Engagement metrics (total posts, likes, reposts, reach)
+- Targets (which accounts, topics, or sectors are affected?)
+- Risk assessment: low / medium / high
+
+**Format:**
+- Use tables for structured numerical data
+- Use bullets for contextual information
+- Always include data collection dates and time ranges
+
+**Example:**
+```
+| Metric | Value |
+|--------|-------|
+| Accounts in network | 47 |
+| Posts analysed | 1,243 |
+| Total engagement (likes + reposts) | 24,561 |
+| Data range | 2026-02-15 to 2026-03-19 |
+| Estimated reach | 500K+ impressions |
+| Risk level | High |
+```
+
+### Next Steps
+
+List actionable recommendations in priority order. These are the outcomes of the investigation.
+
+**Recommended Actions:**
+- Apply moderation labels (flag, mute, suspend)
+- Update or create detection rules
+- Escalate to external team
+- Monitor specific accounts going forward
+- Share findings with external partners
+
+**Format:**
+- Use checkboxes for tracking
+- Include any approval requirements (e.g., "requires moderation review")
+- Specify timelines if applicable
+
+**Example:**
+```
+- [ ] Apply `coordinated_inauthentic_behaviour` label to 47 identified accounts
+- [ ] Create new rule for detecting similar posting patterns (see Rule Recommendations section)
+- [ ] Escalate to trust & safety team for potential platform-wide enforcement
+- [ ] Continue monitoring for new linked accounts (trigger on similar behaviour patterns)
+```
+
+### Details
+
+The complete evidence section. This is where you show all supporting data, timelines, network graphs, and analysis.
+
+**Include:**
+- Account profile summaries (one per account or account cluster)
+- Timeline of activity (formatted as markdown table or timeline)
+- Network graph or coordination evidence (visual description or ASCII diagram)
+- Content examples (most significant posts or patterns)
+- Rule hit analysis (which rules triggered, which didn't)
+- SQL queries used for data extraction (for reproducibility)
+
+**Format Guidelines:**
+- Use tables for structured data (account lists, rule hit counts, engagement metrics)
+- Use timelines for temporal patterns (ASCII or markdown)
+- Use bullet lists for evidence summaries and findings
+- Include SQL query blocks with syntax highlighting
+
+**Example table:**
+```
+| Account | Type | Posts | Rule Hits | PDS Host | Created |
+|---------|------|-------|-----------|----------|---------|
+| @acc1 | Account | 342 | 18 | pds.example.com | 2025-11 |
+| @acc2 | Account | 298 | 12 | pds.example.com | 2025-11 |
+```
+
+### Timestamps
+
+Always record investigation timeline and data ranges. This ensures traceability and reproducibility.
+
+**Include:**
+- Investigation start date
+- Investigation completion date
+- Data collection period (start and end dates)
+- Report authored date
+- Any updates or revisions made since original report
+
+**Format:**
+```
+- Investigation conducted: 2026-03-10 to 2026-03-19
+- Data range analysed: 2026-02-15 to 2026-03-19
+- Report authored: 2026-03-19
+- Last updated: [if applicable]
+```
+
+---
+
+## Report Types
+
+Select the report type based on investigation scope and findings. Each type emphasizes different aspects while maintaining the B-I-N-D-Ts structure.
+
+### Memo
+
+**When to use:** Single account or small issue (2-5 accounts) without evidence of coordination. Quick findings that don't require deep network analysis.
+
+**Scope:** Limited investigation (usually stops after Phase 2 or Phase 3).
+
+**Emphasis:** Account profile and immediate next steps. Minimal network analysis.
+
+**Key sections:**
+- Bottom Line (brief, high-level)
+- Impact (account counts, reach, risk)
+- Next Steps (enforcement or monitoring)
+- Details (account profile, key evidence)
+- Timestamps
+
+**Length:** 1-3 pages
+
+**File naming:** `YYYY-MM-DD-memo-{account-name}.md`
+
+### Cell Deep-Dive
+
+**When to use:** Comprehensive analysis of a coordinated network (5+ accounts). Complete investigation through all 6 phases for a single coordinated group.
+
+**Scope:** Full investigation of a single coordinated cluster.
+
+**Emphasis:** Coordination evidence, network topology, amplification strategy, and rule coverage.
+
+**Key sections:**
+- Bottom Line
+- Impact (network size, reach, temporal scope)
+- Network Summary (account count, relationships, infrastructure)
+- Coordination Evidence (content matching, temporal correlation, shared infrastructure)
+- Amplification Map (primary targets, engagement metrics, spread patterns)
+- Rule Coverage Analysis (Phase 5 findings)
+- Next Steps (labelling, rule updates, ongoing monitoring)
+- Details (full data tables, timelines, network graph)
+- Timestamps
+
+**Length:** 3-8 pages depending on network size
+
+**File naming:** `YYYY-MM-DD-cell-{cell-identifier}.md`
+
+### Cross-Cell
+
+**When to use:** Comparison and analysis of multiple coordinated networks that appear related. Identifies shared tactics, infrastructure, or operators.
+
+**Scope:** Analysis linking 2+ cells together; may reference existing cell deep-dive reports.
+
+**Emphasis:** Cross-cell patterns, shared infrastructure, coordinated operations, and comparative analysis.
+
+**Key sections:**
+- Bottom Line
+- Impact (total accounts across cells, aggregate reach, shared targets)
+- Cell Comparison Matrix (accounts, infrastructure, tactics, timeline overlap)
+- Shared Infrastructure Evidence (domains, PDS hosts, ASN overlap)
+- Shared Tactics (common content, posting patterns, amplification strategies)
+- Hypothesised Relationships (likely operator, operational unit, or shared purpose)
+- Next Steps (coordination-level labelling, rule updates)
+- Details (comparative tables, cross-cell network graph, infrastructure map)
+- Timestamps
+
+**Length:** 4-10 pages depending on number of cells
+
+**File naming:** `YYYY-MM-DD-cross-cell-{description}.md`
+
+### Rule Check
+
+**When to use:** Assessment of rule coverage against known behaviour patterns. Focus on Phase 5 (Rule Validation) findings.
+
+**Scope:** Analysis of rule coverage; may reference accounts or networks already documented.
+
+**Emphasis:** Detection gaps, rule effectiveness, and recommended improvements.
+
+**Key sections:**
+- Bottom Line
+- Impact (accounts caught vs. missed, coverage percentage, risk of missed detection)
+- Rule Coverage Summary (coverage by rule type, accounts caught, accounts missed)
+- Gap Analysis (behaviour patterns not caught, suggested new rules)
+- Rule Recommendations (new rules, rule modifications, threshold adjustments)
+- Next Steps (rule deployment, testing, monitoring)
+- Details (rule hit tables, gap examples with SQL, query results)
+- Timestamps
+
+**Length:** 2-5 pages
+
+**File naming:** `YYYY-MM-DD-rule-check-{rule-type-or-case-name}.md`
+
+---
+
+## Data Presentation Conventions
+
+### Tables
+
+Use markdown tables for structured data:
+
+```markdown
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Value | Value | Value |
+```
+
+**When to use tables:**
+- Account lists with metadata
+- Rule hit counts by account or rule
+- Engagement metrics
+- Infrastructure details (hosts, domains, ASNs)
+
+### Timelines
+
+Use ASCII or markdown-formatted timelines for temporal patterns:
+
+```markdown
+2026-02-15 [09:15] @account1: first post
+2026-02-15 [09:22] @account2: similar post
+2026-02-15 [09:45] @account3: amplifies content
+2026-02-16 [06:30] Network goes dormant
+```
+
+**When to use timelines:**
+- Account activity history
+- Content distribution patterns
+- Coordination timing patterns
+- Campaign phases
+
+### Bullet Lists
+
+Use bullet lists for evidence summaries and qualitative findings:
+
+```markdown
+- Evidence 1: description and supporting detail
+- Evidence 2: description and supporting detail
+- Evidence 3: description and supporting detail
+```
+
+### SQL Queries
+
+Always include the queries used for data extraction in code blocks with ClickHouse syntax highlighting:
+
+````markdown
+### Query: Account Rule Hit History
+
+```sql
+SELECT rule_name, count() as hits, min(timestamp) as first_hit, max(timestamp) as last_hit
+FROM rule_hits
+WHERE account = 'target_account'
+GROUP BY rule_name
+ORDER BY hits DESC
+```
+
+**Result:**
+[table of results]
+````
+
+---
+
+## Output Conventions
+
+### File Naming
+
+Use ISO 8601 date format with descriptive identifier:
+
+```
+YYYY-MM-DD-{type}-{identifier}.md
+```
+
+**Examples:**
+- `2026-03-19-memo-spam-account.md`
+- `2026-03-19-cell-coordinated-network-47.md`
+- `2026-03-19-cross-cell-infrastructure-overlap.md`
+- `2026-03-19-rule-check-copypasta-detection.md`
+
+### Metadata Block
+
+Include investigation metadata at the top of every report (after B-I-N-D-Ts title):
+
+```markdown
+# Investigation Report: [Brief Title]
+
+**Investigator:** [Name]
+**Investigation Date:** [YYYY-MM-DD]
+**Report Type:** [Memo / Cell Deep-Dive / Cross-Cell / Rule Check]
+**Target(s):** [Accounts or networks analysed]
+**Status:** [In Progress / Complete / Escalated]
+**Conclusion:** [Brief summary]
+```
+
+### Directory Structure
+
+Store reports in a hierarchical structure for easy retrieval:
+
+```
+investigations/
+├── YYYY-MM-DD-{case-name}/
+│   ├── report.md                    # Main report
+│   ├── accounts.csv                 # Account list (if applicable)
+│   ├── rule-hits.csv                # Rule trigger data (if applicable)
+│   ├── network-graph.txt            # Network topology or ASCII graph (if applicable)
+│   └── queries/
+│       ├── discovery.sql
+│       ├── characterization.sql
+│       ├── linkage.sql
+│       ├── amplification.sql
+│       └── rule-validation.sql
+```
+
+---
+
+## Integration with Related Skills
+
+- **conducting-investigations** — For investigation methodology and Phase 1-5 guidance
+- **accessing-osprey** — For moderation label operations (Phase 6 enforcement)
+- **querying-clickhouse** — For SQL query construction and optimisation
+
+---
+
+## Review Checklist
+
+Use this checklist when reviewing investigation reports before publication:
+
+**Structure:**
+- [ ] Bottom Line is a single sentence and captures the key finding
+- [ ] Impact section includes account counts, reach, and risk assessment
+- [ ] Next Steps are specific and actionable
+- [ ] Details include supporting data and SQL queries
+- [ ] Timestamps document investigation period and data range
+
+**Evidence:**
+- [ ] All major claims are supported by data
+- [ ] Data sources are clearly documented
+- [ ] SQL queries are included and reproducible
+- [ ] Time ranges and data collection dates are specified
+
+**Accuracy:**
+- [ ] Account counts are verified
+- [ ] Rule coverage percentages are calculated correctly
+- [ ] Findings are consistent across all sections
+- [ ] No contradictions between sections
+
+**Clarity:**
+- [ ] Report type is appropriate for scope and findings
+- [ ] Language is clear and unambiguous
+- [ ] Technical terms are defined or linked
+- [ ] Tables and timelines are properly formatted
+
+**Completeness:**
+- [ ] All recommended next steps are addressed
+- [ ] Escalation path is clear if needed
+- [ ] Follow-up actions are documented
+
