@@ -3,9 +3,7 @@
 
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { createClickHouseClient } from "../lib/clickhouse-client.ts";
-
-type ClickHouseClient = ReturnType<typeof createClickHouseClient>;
+import type { ClickHouseClient } from "../lib/clickhouse-client.ts";
 
 export async function registerClickHouseTools(
   server: McpServer,

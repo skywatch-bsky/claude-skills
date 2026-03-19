@@ -24,7 +24,9 @@ export function createSshClient(config: SshClientConfig): SshClient {
 
   async function executeCommand(sql: string): Promise<QueryResult> {
     const escapedSql = escapeShellArg(sql);
-    const remoteCommand = `docker exec ${config.dockerContainer} clickhouse-client --database ${config.database} --format JSONCompactEachRowWithNamesAndTypes --query "${escapedSql}"`;
+    const escapedContainer = escapeShellArg(config.dockerContainer);
+    const escapedDatabase = escapeShellArg(config.database);
+    const remoteCommand = `docker exec ${escapedContainer} clickhouse-client --database ${escapedDatabase} --format JSONCompactEachRowWithNamesAndTypes --query "${escapedSql}"`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 60_000);
@@ -47,7 +49,13 @@ export function createSshClient(config: SshClientConfig): SshClient {
       }
 
       const stdout = await new Response(proc.stdout).text();
-      return parseSshOutput(stdout);
+      const parseResult = parseSshOutput(stdout);
+
+      if (parseResult.success === false) {
+        throw new Error(`Failed to parse SSH output: ${parseResult.reason}`);
+      }
+
+      return parseResult.data;
     } finally {
       clearTimeout(timeout);
     }
