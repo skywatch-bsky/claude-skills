@@ -5,6 +5,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createClickHouseClient, type ClickHouseConnectionConfig } from "./lib/clickhouse-client.ts";
 import { registerClickHouseTools } from "./tools/clickhouse.ts";
+import { registerDomainTool } from "./tools/domain.ts";
+import { registerIpTool } from "./tools/ip.ts";
+import { registerUrlTool } from "./tools/url.ts";
+import { registerWhoisTool } from "./tools/whois.ts";
+import { registerContentTool } from "./tools/content.ts";
+import { registerOzoneTool, type OzoneConfig } from "./tools/ozone.ts";
 
 function getEnv(key: string, defaultValue: string): string {
   return process.env[key] ?? defaultValue;
@@ -38,6 +44,19 @@ const server = new McpServer({
 });
 
 await registerClickHouseTools(server, client);
+
+await registerDomainTool(server);
+await registerIpTool(server);
+await registerUrlTool(server);
+await registerWhoisTool(server);
+await registerContentTool(server, client);
+
+const ozoneConfig: OzoneConfig = {
+  serviceUrl: process.env["OZONE_SERVICE_URL"] ?? null,
+  adminPassword: process.env["OZONE_ADMIN_PASSWORD"] ?? null,
+  did: process.env["OZONE_DID"] ?? null,
+};
+await registerOzoneTool(server, ozoneConfig);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
