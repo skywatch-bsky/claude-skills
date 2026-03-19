@@ -5,14 +5,14 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { promises as dns } from "dns";
 
-interface DnsRecord {
-  a: string[];
-  aaaa: string[];
-  ns: string[];
-  mx: Array<{ exchange: string; priority: number }>;
-  txt: string[][];
-  cname: string[];
-  soa: {
+type DnsRecord = {
+  readonly a: Array<string>;
+  readonly aaaa: Array<string>;
+  readonly ns: Array<string>;
+  readonly mx: Array<{ exchange: string; priority: number }>;
+  readonly txt: Array<Array<string>>;
+  readonly cname: Array<string>;
+  readonly soa: {
     nsname: string;
     hostmaster: string;
     serial: number;
@@ -21,14 +21,14 @@ interface DnsRecord {
     expire: number;
     minttl: number;
   } | null;
-}
+};
 
-interface DomainCheckResult {
-  domain: string;
-  resolves: boolean;
-  records: DnsRecord;
-  http: { status: number; statusText: string } | null;
-}
+type DomainCheckResult = {
+  readonly domain: string;
+  readonly resolves: boolean;
+  readonly records: DnsRecord;
+  readonly http: { status: number; statusText: string } | null;
+};
 
 async function resolveDnsRecords(domain: string): Promise<DnsRecord> {
   const results = await Promise.allSettled([
@@ -43,15 +43,15 @@ async function resolveDnsRecords(domain: string): Promise<DnsRecord> {
 
   const a =
     results[0].status === "fulfilled"
-      ? (results[0].value as string[])
+      ? (results[0].value as Array<string>)
       : [];
   const aaaa =
     results[1].status === "fulfilled"
-      ? (results[1].value as string[])
+      ? (results[1].value as Array<string>)
       : [];
   const ns =
     results[2].status === "fulfilled"
-      ? (results[2].value as string[])
+      ? (results[2].value as Array<string>)
       : [];
   const mx =
     results[3].status === "fulfilled"
@@ -59,26 +59,25 @@ async function resolveDnsRecords(domain: string): Promise<DnsRecord> {
       : [];
   const txt =
     results[4].status === "fulfilled"
-      ? (results[4].value as string[][])
+      ? (results[4].value as Array<Array<string>>)
       : [];
   const cname =
     results[5].status === "fulfilled"
-      ? (results[5].value as string[])
+      ? (results[5].value as Array<string>)
       : [];
 
-  let soa: DnsRecord["soa"] = null;
-  if (results[6].status === "fulfilled") {
-    const soaData = results[6].value as {
-      nsname: string;
-      hostmaster: string;
-      serial: number;
-      refresh: number;
-      retry: number;
-      expire: number;
-      minttl: number;
-    };
-    soa = soaData;
-  }
+  const soa: DnsRecord["soa"] =
+    results[6].status === "fulfilled"
+      ? (results[6].value as {
+          nsname: string;
+          hostmaster: string;
+          serial: number;
+          refresh: number;
+          retry: number;
+          expire: number;
+          minttl: number;
+        })
+      : null;
 
   return {
     a,

@@ -4,30 +4,30 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-interface IpLookupResult {
-  ip: string;
-  geo: {
-    country: string;
-    countryCode: string;
-    region: string;
-    city: string;
-    zip: string;
-    lat: number;
-    lon: number;
-    timezone: string;
+type IpLookupResult = {
+  readonly ip: string;
+  readonly geo: {
+    readonly country: string;
+    readonly countryCode: string;
+    readonly region: string;
+    readonly city: string;
+    readonly zip: string;
+    readonly lat: number;
+    readonly lon: number;
+    readonly timezone: string;
   };
-  network: {
-    isp: string;
-    org: string;
-    asn: string;
-    asname: string;
+  readonly network: {
+    readonly isp: string;
+    readonly org: string;
+    readonly asn: string;
+    readonly asname: string;
   };
-  flags: {
-    mobile: boolean;
-    proxy: boolean;
-    hosting: boolean;
+  readonly flags: {
+    readonly mobile: boolean;
+    readonly proxy: boolean;
+    readonly hosting: boolean;
   };
-}
+};
 
 export function validateIpAddress(ip: string): boolean {
   const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/;
@@ -49,7 +49,7 @@ export function validateIpAddress(ip: string): boolean {
     return false;
   }
 
-  const colonCount = (ip.split("") as Array<string>).filter((c) => c === ":").length;
+  const colonCount = (ip.split("") as Array<string>).filter((c: string) => c === ":").length;
   if (colonCount < 2) {
     return false;
   }

@@ -1,14 +1,14 @@
 // pattern: Functional Core
 // Pure function module for parsing WHOIS response text
 
-export interface WhoisResult {
-  registrar: string | null;
-  creationDate: string | null;
-  expirationDate: string | null;
-  nameservers: Array<string>;
-  domainAge: number | null;
-  rawText: string;
-}
+export type WhoisResult = {
+  readonly registrar: string | null;
+  readonly creationDate: string | null;
+  readonly expirationDate: string | null;
+  readonly nameservers: Array<string>;
+  readonly domainAge: number | null;
+  readonly rawText: string;
+};
 
 function extractField(text: string, patterns: Array<RegExp>): string | null {
   for (const pattern of patterns) {

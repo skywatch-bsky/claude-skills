@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { registerIpTool, validateIpAddress } from "./ip";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMockServer } from "../test-utils";
 
 describe("ip_lookup tool", () => {
   describe("validateIpAddress", () => {
@@ -34,23 +34,11 @@ describe("ip_lookup tool", () => {
 
   describe("AC2.2: Success with known public IP", () => {
     it("should return geo and network data for 8.8.8.8", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "ip_lookup") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerIpTool(mockServer);
 
+      const capturedHandler = getHandler("ip_lookup");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({ ip: "8.8.8.8" }) as Promise<unknown>);
@@ -98,23 +86,11 @@ describe("ip_lookup tool", () => {
 
   describe("AC2.7: Failure with invalid IP format", () => {
     it("should return error for obviously invalid IP like 'not-an-ip'", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "ip_lookup") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerIpTool(mockServer);
 
+      const capturedHandler = getHandler("ip_lookup");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({ ip: "not-an-ip" }) as Promise<unknown>);
@@ -133,23 +109,11 @@ describe("ip_lookup tool", () => {
     });
 
     it("should return error for out-of-range IPv4 address like 999.999.999.999", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "ip_lookup") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerIpTool(mockServer);
 
+      const capturedHandler = getHandler("ip_lookup");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({ ip: "999.999.999.999" }) as Promise<unknown>);

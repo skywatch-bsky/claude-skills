@@ -14,51 +14,64 @@ type SubjectRef =
   | { $type: "com.atproto.admin.defs#repoRef"; did: string }
   | { $type: "com.atproto.repo.strongRef"; uri: string };
 
-interface OzoneEventRequest {
-  event: {
-    $type: "tools.ozone.moderation.defs#modEventLabel";
-    createLabelVals: ReadonlyArray<string>;
-    negateLabelVals: ReadonlyArray<string>;
+type OzoneEventRequest = {
+  readonly event: {
+    readonly $type: "tools.ozone.moderation.defs#modEventLabel";
+    readonly createLabelVals: ReadonlyArray<string>;
+    readonly negateLabelVals: ReadonlyArray<string>;
   };
-  subject: SubjectRef;
-  createdBy: string;
-}
+  readonly subject: SubjectRef;
+  readonly createdBy: string;
+};
 
 export function buildOzoneRequest(
   subject: string,
   label: string,
   action: "apply" | "remove",
   createdBy: string
-): OzoneEventRequest | { error: string } {
-  let subjectRef: SubjectRef;
-
+): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
   if (subject.startsWith("did:")) {
-    subjectRef = {
+    const subjectRef: SubjectRef = {
       $type: "com.atproto.admin.defs#repoRef",
       did: subject,
     };
+    return {
+      ok: true,
+      request: {
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventLabel",
+          createLabelVals: action === "apply" ? [label] : [],
+          negateLabelVals: action === "remove" ? [label] : [],
+        },
+        subject: subjectRef,
+        createdBy,
+      },
+    };
   } else if (subject.startsWith("at://")) {
-    subjectRef = {
+    const subjectRef: SubjectRef = {
       $type: "com.atproto.repo.strongRef",
       uri: subject,
     };
+    return {
+      ok: true,
+      request: {
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventLabel",
+          createLabelVals: action === "apply" ? [label] : [],
+          negateLabelVals: action === "remove" ? [label] : [],
+        },
+        subject: subjectRef,
+        createdBy,
+      },
+    };
   } else {
     return {
+      ok: false,
       error:
         'Subject must be a DID (did:plc:...) or AT-URI (at://...). Got: ' +
         subject,
     };
   }
-
-  return {
-    event: {
-      $type: "tools.ozone.moderation.defs#modEventLabel",
-      createLabelVals: action === "apply" ? [label] : [],
-      negateLabelVals: action === "remove" ? [label] : [],
-    },
-    subject: subjectRef,
-    createdBy,
-  };
 }
 
 function encodeBasicAuth(username: string, password: string): string {
@@ -102,20 +115,20 @@ export async function registerOzoneTool(
           action: "apply" | "remove";
         };
 
-        const requestOrError = buildOzoneRequest(subject, label, action, config.did);
-        if ("error" in requestOrError) {
+        const result = buildOzoneRequest(subject, label, action, config.did);
+        if (!result.ok) {
           return {
             isError: true,
             content: [
               {
                 type: "text",
-                text: requestOrError.error,
+                text: result.error,
               },
             ],
           };
         }
 
-        const request = requestOrError;
+        const request = result.request;
         const authHeader = encodeBasicAuth("admin", config.adminPassword);
 
         const response = await fetch(
@@ -144,7 +157,7 @@ export async function registerOzoneTool(
           };
         }
 
-        const result = {
+        const responseResult = {
           success: true,
           action,
           subject,
@@ -156,7 +169,7 @@ export async function registerOzoneTool(
           content: [
             {
               type: "text",
-              text: JSON.stringify(result, null, 2),
+              text: JSON.stringify(responseResult, null, 2),
             },
           ],
         };

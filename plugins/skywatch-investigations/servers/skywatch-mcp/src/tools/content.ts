@@ -5,13 +5,13 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { ClickHouseClient } from "../lib/clickhouse-client.ts";
 
-interface ContentSimilarityResult {
-  user: string;
-  handle: string;
-  text: string;
-  score: number;
-  created_at: string;
-}
+type ContentSimilarityResult = {
+  readonly user: string;
+  readonly handle: string;
+  readonly text: string;
+  readonly score: number;
+  readonly created_at: string;
+};
 
 export function escapeClickhouseSql(text: string): string {
   return text.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -73,7 +73,7 @@ export async function registerContentTool(
 
         const result = await client.query(query);
 
-        const results: ContentSimilarityResult[] = result.rows.map((row) => ({
+        const results: Array<ContentSimilarityResult> = result.rows.map((row) => ({
           user: String(row["user"] ?? ""),
           handle: String(row["handle"] ?? ""),
           text: String(row["text"] ?? ""),

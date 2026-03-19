@@ -1,27 +1,15 @@
 import { describe, it, expect } from "bun:test";
 import { registerDomainTool } from "./domain";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMockServer } from "../test-utils";
 
 describe("domain_check tool", () => {
   describe("AC2.1: Success with well-known domain", () => {
     it("should return DNS records and HTTP status for example.com", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "domain_check") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerDomainTool(mockServer);
 
+      const capturedHandler = getHandler("domain_check");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({ domain: "example.com" }) as Promise<unknown>);
@@ -68,23 +56,11 @@ describe("domain_check tool", () => {
 
   describe("AC2.6: Graceful handling of non-resolving domain", () => {
     it("should return resolves: false for non-existent domain without throwing", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "domain_check") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerDomainTool(mockServer);
 
+      const capturedHandler = getHandler("domain_check");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({

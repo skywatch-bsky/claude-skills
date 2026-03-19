@@ -5,20 +5,20 @@ import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { isKnownShortener } from "../lib/url-shorteners.js";
 
-interface RedirectHop {
-  url: string;
-  statusCode: number;
-  location: string | null;
-  isShortener: boolean;
-}
+type RedirectHop = {
+  readonly url: string;
+  readonly statusCode: number;
+  readonly location: string | null;
+  readonly isShortener: boolean;
+};
 
-interface UrlExpandResult {
-  originalUrl: string;
-  finalUrl: string;
-  hops: Array<RedirectHop>;
-  hopCount: number;
-  error?: string;
-}
+type UrlExpandResult = {
+  readonly originalUrl: string;
+  readonly finalUrl: string;
+  readonly hops: Array<RedirectHop>;
+  readonly hopCount: number;
+  readonly error?: string;
+};
 
 async function followRedirects(
   startUrl: string,
@@ -86,16 +86,21 @@ async function followRedirects(
     }
   }
 
-  const result: UrlExpandResult = {
-    originalUrl: startUrl,
-    finalUrl,
-    hops,
-    hopCount: hops.length,
-  };
-
-  if (hops.length >= maxHops) {
-    result.error = "Max redirects exceeded";
-  }
+  const result: UrlExpandResult =
+    hops.length >= maxHops
+      ? {
+          originalUrl: startUrl,
+          finalUrl,
+          hops,
+          hopCount: hops.length,
+          error: "Max redirects exceeded",
+        }
+      : {
+          originalUrl: startUrl,
+          finalUrl,
+          hops,
+          hopCount: hops.length,
+        };
 
   return result;
 }

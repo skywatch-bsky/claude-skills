@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { registerWhoisTool } from "./whois";
 import { parseWhoisResponse } from "../lib/whois-parser";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMockServer } from "../test-utils";
 
 describe("whois_lookup tool", () => {
   describe("parseWhoisResponse (unit test)", () => {
@@ -104,23 +104,11 @@ expires: 2024-08-13
 
   describe("AC2.5: Success with real domain lookup", () => {
     it("should return WHOIS data for google.com", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "whois_lookup") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerWhoisTool(mockServer);
 
+      const capturedHandler = getHandler("whois_lookup");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({
@@ -182,24 +170,12 @@ expires: 2024-08-13
 
   describe("Tool registration", () => {
     it("should register whois_lookup tool on server", async () => {
-      let registerCalled = false;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "whois_lookup") {
-            registerCalled = true;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerWhoisTool(mockServer);
 
-      expect(registerCalled).toBe(true);
+      const handler = getHandler("whois_lookup");
+      expect(handler).not.toBeNull();
     });
   });
 });

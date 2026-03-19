@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { registerUrlTool } from "./url";
 import { isKnownShortener } from "../lib/url-shorteners";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMockServer } from "../test-utils";
 
 describe("url_expand tool", () => {
   describe("isKnownShortener (AC2.4)", () => {
@@ -28,23 +28,11 @@ describe("url_expand tool", () => {
 
   describe("AC2.3: Success with redirect chain", () => {
     it("should follow HTTP redirects for http://example.com", async () => {
-      let capturedHandler: ((args: unknown) => unknown) | null = null;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "url_expand") {
-            capturedHandler = handler;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerUrlTool(mockServer);
 
+      const capturedHandler = getHandler("url_expand");
       expect(capturedHandler).not.toBeNull();
 
       const result = await (capturedHandler!({
@@ -101,24 +89,12 @@ describe("url_expand tool", () => {
 
   describe("Tool registration", () => {
     it("should register url_expand tool on server", async () => {
-      let registerCalled = false;
-
-      const mockServer = {
-        tool: (
-          name: string,
-          description: string,
-          schema: object,
-          handler: (args: unknown) => unknown
-        ) => {
-          if (name === "url_expand") {
-            registerCalled = true;
-          }
-        },
-      } as unknown as McpServer;
+      const { mockServer, getHandler } = createMockServer();
 
       await registerUrlTool(mockServer);
 
-      expect(registerCalled).toBe(true);
+      const handler = getHandler("url_expand");
+      expect(handler).not.toBeNull();
     });
   });
 });

@@ -1,5 +1,39 @@
 import { describe, it, expect } from "bun:test";
-import { buildOzoneRequest } from "./ozone.ts";
+import { buildOzoneRequest, registerOzoneTool } from "./ozone.ts";
+import { createMockServer } from "../test-utils";
+
+describe("registerOzoneTool handler", () => {
+  it("AC3.4: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTool(mockServer, {
+      serviceUrl: null,
+      adminPassword: null,
+      did: null,
+    });
+
+    const capturedHandler = getHandler("ozone_label");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+      label: "spam",
+      action: "apply",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+});
 
 describe("buildOzoneRequest", () => {
   it("should build request for DID subject with apply action", () => {
@@ -10,17 +44,17 @@ describe("buildOzoneRequest", () => {
       "did:plc:moderator456"
     );
 
-    if ("error" in result) {
+    if (!result.ok) {
       throw new Error("Should not have error");
     }
 
-    expect(result.subject).toEqual({
+    expect(result.request.subject).toEqual({
       $type: "com.atproto.admin.defs#repoRef",
       did: "did:plc:example123",
     });
-    expect(result.event.createLabelVals).toEqual(["spam"]);
-    expect(result.event.negateLabelVals).toEqual([]);
-    expect(result.createdBy).toBe("did:plc:moderator456");
+    expect(result.request.event.createLabelVals).toEqual(["spam"]);
+    expect(result.request.event.negateLabelVals).toEqual([]);
+    expect(result.request.createdBy).toBe("did:plc:moderator456");
   });
 
   it("should build request for AT-URI subject with remove action", () => {
@@ -31,16 +65,16 @@ describe("buildOzoneRequest", () => {
       "did:plc:moderator456"
     );
 
-    if ("error" in result) {
+    if (!result.ok) {
       throw new Error("Should not have error");
     }
 
-    expect(result.subject).toEqual({
+    expect(result.request.subject).toEqual({
       $type: "com.atproto.repo.strongRef",
       uri: "at://did:plc:example/app.bsky.feed.post/abc123",
     });
-    expect(result.event.createLabelVals).toEqual([]);
-    expect(result.event.negateLabelVals).toEqual(["spam"]);
+    expect(result.request.event.createLabelVals).toEqual([]);
+    expect(result.request.event.negateLabelVals).toEqual(["spam"]);
   });
 
   it("should reject invalid subject format", () => {
@@ -51,7 +85,7 @@ describe("buildOzoneRequest", () => {
       "did:plc:moderator456"
     );
 
-    if (!("error" in result)) {
+    if (result.ok) {
       throw new Error("Should have error");
     }
 
@@ -66,11 +100,11 @@ describe("buildOzoneRequest", () => {
       "did:plc:moderator456"
     );
 
-    if ("error" in result) {
+    if (!result.ok) {
       throw new Error("Should not have error");
     }
 
-    expect(result.event.$type).toBe(
+    expect(result.request.event.$type).toBe(
       "tools.ozone.moderation.defs#modEventLabel"
     );
   });
@@ -83,11 +117,11 @@ describe("buildOzoneRequest", () => {
       "did:plc:moderator456"
     );
 
-    if ("error" in result) {
+    if (!result.ok) {
       throw new Error("Should not have error");
     }
 
-    expect(result.event.createLabelVals).toEqual(["nsfw"]);
+    expect(result.request.event.createLabelVals).toEqual(["nsfw"]);
   });
 
   it("should use provided createdBy value", () => {
@@ -99,10 +133,10 @@ describe("buildOzoneRequest", () => {
       did
     );
 
-    if ("error" in result) {
+    if (!result.ok) {
       throw new Error("Should not have error");
     }
 
-    expect(result.createdBy).toBe(did);
+    expect(result.request.createdBy).toBe(did);
   });
 });
