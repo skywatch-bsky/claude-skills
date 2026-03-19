@@ -77,7 +77,7 @@ export async function registerIpTool(server: McpServer): Promise<void> {
         .describe("IPv4 or IPv6 address to look up"),
     },
     async (args) => {
-      const { ip } = args as { ip: string };
+      const { ip } = args;
 
       if (!validateIpAddress(ip)) {
         return {

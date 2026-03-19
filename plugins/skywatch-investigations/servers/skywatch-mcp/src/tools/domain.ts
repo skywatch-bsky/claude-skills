@@ -127,7 +127,7 @@ export async function registerDomainTool(server: McpServer): Promise<void> {
         .describe("Domain name to check (e.g., example.com)"),
     },
     async (args) => {
-      const { domain } = args as { domain: string };
+      const { domain } = args;
 
       try {
         const records = await resolveDnsRecords(domain);

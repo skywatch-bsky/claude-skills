@@ -35,7 +35,7 @@ export async function registerWhoisTool(server: McpServer): Promise<void> {
         .describe("Domain name to look up (e.g., example.com)"),
     },
     async (args) => {
-      const { domain } = args as { domain: string };
+      const { domain } = args;
 
       try {
         const rawText = await whoisLookup(domain);

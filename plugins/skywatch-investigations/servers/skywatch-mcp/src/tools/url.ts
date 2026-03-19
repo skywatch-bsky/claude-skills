@@ -116,7 +116,7 @@ export async function registerUrlTool(server: McpServer): Promise<void> {
         .describe("URL to expand (follow redirects)"),
     },
     async (args) => {
-      const { url } = args as { url: string };
+      const { url } = args;
 
       try {
         const result = await followRedirects(url);

@@ -62,11 +62,7 @@ export async function registerContentTool(
     },
     async (args) => {
       try {
-        const { text, threshold, limit } = args as {
-          text: string;
-          threshold: number;
-          limit: number;
-        };
+        const { text, threshold, limit } = args;
 
         const escapedText = escapeClickhouseSql(text);
         const query = buildSimilarityQuery(escapedText, threshold, limit);

@@ -109,11 +109,7 @@ export async function registerOzoneTool(
           };
         }
 
-        const { subject, label, action } = args as {
-          subject: string;
-          label: string;
-          action: "apply" | "remove";
-        };
+        const { subject, label, action } = args;
 
         const result = buildOzoneRequest(subject, label, action, config.did);
         if (!result.ok) {
