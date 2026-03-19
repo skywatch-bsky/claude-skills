@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "skywatch-mcp": {
+      "command": "bun",
+      "args": ["run", "servers/skywatch-mcp/src/index.ts"],
+      "cwd": ".",
+      "env": {
+        "CLICKHOUSE_MODE": "ssh",
+        "CLICKHOUSE_HOST": "http://localhost",
+        "CLICKHOUSE_PORT": "8123",
+        "CLICKHOUSE_USER": "default",
+        "CLICKHOUSE_PASSWORD": "",
+        "CLICKHOUSE_DATABASE": "default",
+        "SSH_HOST": "",
+        "SSH_USER": "",
+        "SSH_DOCKER_CONTAINER": "",
+        "OZONE_SERVICE_URL": "",
+        "OZONE_ADMIN_PASSWORD": "",
+        "OZONE_DID": ""
+      }
+    }
+  }
+}
