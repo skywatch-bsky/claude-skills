@@ -350,8 +350,8 @@ LIMIT 100
 SELECT
   rule_name,
   count() as total_evaluations,
-  count() FILTER (WHERE matched = true) as matches,
-  round(100.0 * count() FILTER (WHERE matched = true) / count(), 2) as match_rate,
+  countIf(matched = true) as matches,
+  round(100.0 * countIf(matched = true) / count(), 2) as match_rate,
   count(DISTINCT did) as unique_accounts_hit,
   avg(score) as avg_score
 FROM default.osprey_execution_results
@@ -464,7 +464,7 @@ SELECT
   event_type,
   rule_category,
   count() as evaluations,
-  count() FILTER (WHERE matched = true) as matches,
+  countIf(matched = true) as matches,
   count(DISTINCT rule_name) as unique_rules
 FROM default.osprey_execution_results
 WHERE created_at > now() - interval 7 day
