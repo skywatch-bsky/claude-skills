@@ -1,10 +1,12 @@
 import { z } from "zod";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { ClickHouseClientInterface } from "../lib/clickhouse-client.ts";
+import type { createClickHouseClient } from "../lib/clickhouse-client.ts";
+
+type ClickHouseClient = ReturnType<typeof createClickHouseClient>;
 
 export async function registerClickHouseTools(
   server: McpServer,
-  client: ClickHouseClientInterface
+  client: ClickHouseClient
 ): Promise<void> {
   server.tool(
     "clickhouse_query",
@@ -73,8 +75,3 @@ export async function registerClickHouseTools(
     }
   );
 }
-
-type ClickHouseClientInterface = {
-  query(sql: string): Promise<any>;
-  getSchema(): Promise<any>;
-};
