@@ -22,11 +22,6 @@ type ClickHouseClientInterface = {
   getSchema(): Promise<QueryResult>;
 };
 
-interface ParsedResponse {
-  meta?: Array<{ name: string; type: string }>;
-  data?: unknown[];
-}
-
 export function createClickHouseClient(
   config: ClickHouseClientConfig
 ): ClickHouseClientInterface {
