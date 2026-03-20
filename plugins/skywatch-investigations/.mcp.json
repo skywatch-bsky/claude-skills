@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "skywatch-mcp": {
-      "command": "bash",
-      "args": ["-c", "cd servers/skywatch-mcp && bun install --silent 2>/dev/null && bun run src/index.ts"],
+      "command": "bun",
+      "args": ["run", "servers/skywatch-mcp/src/index.ts"],
       "cwd": ".",
       "env": {
         "CLICKHOUSE_MODE": "ssh",
