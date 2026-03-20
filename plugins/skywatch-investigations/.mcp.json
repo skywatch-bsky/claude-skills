@@ -16,8 +16,7 @@
         "SSH_DOCKER_CONTAINER": "",
         "OZONE_SERVICE_URL": "",
         "OZONE_ADMIN_PASSWORD": "",
-        "OZONE_DID": "",
-        "NODE_PATH": "${CLAUDE_PLUGIN_DATA}/node_modules"
+        "OZONE_DID": ""
       }
     }
   }
