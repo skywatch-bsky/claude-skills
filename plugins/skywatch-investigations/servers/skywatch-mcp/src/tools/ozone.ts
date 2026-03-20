@@ -106,11 +106,7 @@ type SessionTokens = {
 
 let cachedSession: SessionTokens | null = null;
 
-async function getAccessToken(config: OzoneConfig): Promise<string> {
-  if (cachedSession) {
-    return cachedSession.accessJwt;
-  }
-
+async function createSession(config: OzoneConfig): Promise<string> {
   const response = await fetch(
     `https://${config.pdsHost}/xrpc/com.atproto.server.createSession`,
     {
@@ -131,6 +127,38 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
   const session = (await response.json()) as SessionTokens;
   cachedSession = session;
   return session.accessJwt;
+}
+
+async function refreshSession(config: OzoneConfig): Promise<string> {
+  if (!cachedSession) {
+    return createSession(config);
+  }
+
+  const response = await fetch(
+    `https://${config.pdsHost}/xrpc/com.atproto.server.refreshSession`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${cachedSession.refreshJwt}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    cachedSession = null;
+    return createSession(config);
+  }
+
+  const session = (await response.json()) as SessionTokens;
+  cachedSession = session;
+  return session.accessJwt;
+}
+
+async function getAccessToken(config: OzoneConfig): Promise<string> {
+  if (cachedSession) {
+    return cachedSession.accessJwt;
+  }
+  return createSession(config);
 }
 
 export async function registerOzoneTool(
@@ -187,35 +215,49 @@ export async function registerOzoneTool(
         }
 
         const request = result.request;
-        const accessJwt = await getAccessToken(config);
 
-        const response = await fetch(
-          `https://${config.pdsHost}/xrpc/tools.ozone.moderation.emitEvent`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${accessJwt}`,
-              "atproto-proxy": `${config.did}#atproto_labeler`,
-              "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
-            },
-            body: JSON.stringify(request),
-          }
-        );
+        const emitEvent = async (jwt: string) =>
+          fetch(
+            `https://${config.pdsHost}/xrpc/tools.ozone.moderation.emitEvent`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${jwt}`,
+                "atproto-proxy": `${config.did}#atproto_labeler`,
+                "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
+              },
+              body: JSON.stringify(request),
+            }
+          );
 
-        const responseBody = await response.text();
+        let accessJwt = await getAccessToken(config);
+        let response = await emitEvent(accessJwt);
 
         if (!response.ok) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: `Ozone API error (${response.status}): ${responseBody}`,
-              },
-            ],
-          };
+          const body = await response.text();
+          const isExpired = body.includes("ExpiredToken");
+
+          if (isExpired) {
+            accessJwt = await refreshSession(config);
+            response = await emitEvent(accessJwt);
+          }
+
+          if (!response.ok) {
+            const retryBody = isExpired ? await response.text() : body;
+            return {
+              isError: true,
+              content: [
+                {
+                  type: "text",
+                  text: `Ozone API error (${response.status}): ${retryBody}`,
+                },
+              ],
+            };
+          }
         }
+
+        const responseBody = await response.text();
 
         const responseResult = {
           success: true,
