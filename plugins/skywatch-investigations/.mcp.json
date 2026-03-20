@@ -2,7 +2,7 @@
   "mcpServers": {
     "skywatch-mcp": {
       "command": "bun",
-      "args": ["run", "servers/skywatch-mcp/src/index.ts"],
+      "args": ["run", "servers/skywatch-mcp/dist/server.js"],
       "cwd": ".",
       "env": {
         "CLICKHOUSE_MODE": "ssh",

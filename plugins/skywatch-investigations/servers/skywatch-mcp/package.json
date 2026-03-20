@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outfile dist/server.js --target=bun",
     "test": "bun test"
   },
   "dependencies": {
