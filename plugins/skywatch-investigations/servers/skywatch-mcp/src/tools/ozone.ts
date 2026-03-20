@@ -6,6 +6,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 export type OzoneConfig = {
   readonly serviceUrl: string | null;
+  readonly handle: string | null;
   readonly adminPassword: string | null;
   readonly did: string | null;
   readonly pdsHost: string | null;
@@ -116,7 +117,7 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        identifier: config.did,
+        identifier: config.handle,
         password: config.adminPassword,
       }),
     }
@@ -158,13 +159,13 @@ export async function registerOzoneTool(
     },
     async (args) => {
       try {
-        if (!config.adminPassword || !config.did || !config.pdsHost) {
+        if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
           return {
             isError: true,
             content: [
               {
                 type: "text",
-                text: "Ozone is not configured. Set OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
+                text: "Ozone is not configured. Set OZONE_HANDLE, OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
               },
             ],
           };
@@ -196,6 +197,7 @@ export async function registerOzoneTool(
               "Content-Type": "application/json",
               Authorization: `Bearer ${accessJwt}`,
               "atproto-proxy": `${config.did}#atproto_labeler`,
+              "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
             },
             body: JSON.stringify(request),
           }
