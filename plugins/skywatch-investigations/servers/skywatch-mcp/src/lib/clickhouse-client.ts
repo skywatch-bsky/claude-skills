@@ -147,14 +147,14 @@ export function createClickHouseClient(
       });
 
     case "ssh":
-      if (!config.sshHost || !config.sshUser || !config.dockerContainer || !config.database) {
+      if (!config.sshHost || !config.dockerContainer || !config.database) {
         throw new Error(
-          "SSH mode requires sshHost, sshUser, dockerContainer, and database configuration"
+          "SSH mode requires sshHost, dockerContainer, and database configuration"
         );
       }
       return createSshClient({
         sshHost: config.sshHost,
-        sshUser: config.sshUser,
+        sshUser: config.sshUser || undefined,
         dockerContainer: config.dockerContainer,
         database: config.database,
       });

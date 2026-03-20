@@ -7,7 +7,7 @@ import type { QueryResult } from "./clickhouse-client";
 
 export type SshClientConfig = {
   readonly sshHost: string;
-  readonly sshUser: string;
+  readonly sshUser?: string;
   readonly dockerContainer: string;
   readonly database: string;
 };
@@ -33,7 +33,7 @@ export function createSshClient(config: SshClientConfig): SshClient {
 
     try {
       const proc = Bun.spawn(
-        ["ssh", `${config.sshUser}@${config.sshHost}`, remoteCommand],
+        ["ssh", config.sshUser ? `${config.sshUser}@${config.sshHost}` : config.sshHost, remoteCommand],
         {
           stdout: "pipe",
           stderr: "pipe",
