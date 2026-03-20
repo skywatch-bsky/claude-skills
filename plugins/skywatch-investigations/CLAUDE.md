@@ -30,7 +30,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `ip_lookup` — Geolocate IP addresses via ip-api.com
   - `url_expand` — Expand shortened URLs to full targets
   - `whois_lookup` — Query WHOIS databases for registrant information
-  - `ozone_label` — Apply moderation labels via Ozone API
+  - `ozone_label` — Apply/remove moderation labels via Ozone API (supports comment and externalUrl)
 
 ### Guarantees
 
@@ -44,7 +44,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 - ClickHouse access (direct or SSH mode) configured via env vars
 - Bun runtime installed for MCP server
-- Ozone credentials (optional — only for labelling)
+- Ozone credentials (optional — only for labelling): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
 
 ## Dependencies
 
@@ -67,8 +67,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.1.0, metadata) |
-| `.mcp.json` | MCP server configuration with ClickHouse/SSH/Ozone env vars |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.9.1, metadata) |
+| `.mcp.json` | MCP server configuration with ClickHouse/SSH env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
 | `skills/accessing-osprey/SKILL.md` | Osprey system context and schema reference |
@@ -83,6 +83,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - MCP server requires Bun runtime — `bun` must be on PATH
 - `CLICKHOUSE_MODE` defaults to `ssh` — set to `direct` for local ClickHouse
 - Ozone tools fail gracefully without credentials (clear error message)
+- Ozone env vars (`OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`) are NOT in `.mcp.json` — set them in `~/.claude/settings.json` or `~/.zshrc` to avoid committing secrets
+- Ozone auth goes through the PDS (via `atproto-proxy` header), not directly to the Ozone service URL
 - `content_similarity` depends on ClickHouse — recon tools work independently
 - ip-api.com free tier has 45 req/min rate limit
 - SSH mode requires `SSH_HOST`, `SSH_USER`, and `SSH_DOCKER_CONTAINER` to be configured
