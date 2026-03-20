@@ -8,6 +8,7 @@ export type OzoneConfig = {
   readonly serviceUrl: string | null;
   readonly adminPassword: string | null;
   readonly did: string | null;
+  readonly pdsHost: string | null;
 };
 
 type SubjectRef =
@@ -97,9 +98,38 @@ export function buildOzoneRequest(
   }
 }
 
-function encodeBasicAuth(username: string, password: string): string {
-  const credentials = `${username}:${password}`;
-  return Buffer.from(credentials).toString("base64");
+type SessionTokens = {
+  accessJwt: string;
+  refreshJwt: string;
+};
+
+let cachedSession: SessionTokens | null = null;
+
+async function getAccessToken(config: OzoneConfig): Promise<string> {
+  if (cachedSession) {
+    return cachedSession.accessJwt;
+  }
+
+  const response = await fetch(
+    `https://${config.pdsHost}/xrpc/com.atproto.server.createSession`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: config.did,
+        password: config.adminPassword,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Failed to create session (${response.status}): ${body}`);
+  }
+
+  const session = (await response.json()) as SessionTokens;
+  cachedSession = session;
+  return session.accessJwt;
 }
 
 export async function registerOzoneTool(
@@ -128,13 +158,13 @@ export async function registerOzoneTool(
     },
     async (args) => {
       try {
-        if (!config.serviceUrl || !config.adminPassword || !config.did) {
+        if (!config.serviceUrl || !config.adminPassword || !config.did || !config.pdsHost) {
           return {
             isError: true,
             content: [
               {
                 type: "text",
-                text: "Ozone is not configured. Set OZONE_SERVICE_URL, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
+                text: "Ozone is not configured. Set OZONE_SERVICE_URL, OZONE_ADMIN_PASSWORD, OZONE_DID, and OZONE_PDS environment variables.",
               },
             ],
           };
@@ -156,7 +186,7 @@ export async function registerOzoneTool(
         }
 
         const request = result.request;
-        const authHeader = encodeBasicAuth("admin", config.adminPassword);
+        const accessJwt = await getAccessToken(config);
 
         const response = await fetch(
           `${config.serviceUrl}/xrpc/tools.ozone.moderation.emitEvent`,
@@ -164,7 +194,8 @@ export async function registerOzoneTool(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Basic ${authHeader}`,
+              Authorization: `Bearer ${accessJwt}`,
+              "atproto-proxy": `${config.did}#atproto_labeler`,
             },
             body: JSON.stringify(request),
           }

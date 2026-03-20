@@ -66,6 +66,7 @@ const ozoneConfig: OzoneConfig = {
   serviceUrl: process.env["OZONE_SERVICE_URL"] ?? null,
   adminPassword: process.env["OZONE_ADMIN_PASSWORD"] ?? null,
   did: process.env["OZONE_DID"] ?? null,
+  pdsHost: process.env["OZONE_PDS"] ?? null,
 };
 await registerOzoneTool(server, ozoneConfig);
 
