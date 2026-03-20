@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "diff -q \"${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp/package.json\" \"${CLAUDE_PLUGIN_DATA}/package.json\" >/dev/null 2>&1 || (mkdir -p \"${CLAUDE_PLUGIN_DATA}\" && cp \"${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp/package.json\" \"${CLAUDE_PLUGIN_DATA}/package.json\" && cd \"${CLAUDE_PLUGIN_DATA}\" && bun install --silent) || rm -f \"${CLAUDE_PLUGIN_DATA}/package.json\""
+          }
+        ]
+      }
+    ]
+  }
+}
