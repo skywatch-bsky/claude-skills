@@ -2,8 +2,8 @@
   "mcpServers": {
     "skywatch-mcp": {
       "command": "npx",
-      "args": ["tsx", "servers/skywatch-mcp/src/index.ts"],
-      "cwd": ".",
+      "args": ["tsx", "${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp/src/index.ts"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
       "env": {
         "CLICKHOUSE_MODE": "ssh",
         "CLICKHOUSE_HOST": "http://localhost",
