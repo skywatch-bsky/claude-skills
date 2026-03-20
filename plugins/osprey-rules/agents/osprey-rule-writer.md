@@ -22,8 +22,14 @@ managing the write→verify→fix loop.
 
 Before working on any task:
 
-1. Use `AskUserQuestion` to request the rules project path and osprey-for-atproto
-   repo path from the user. Store both for all subsequent dispatches.
+1. **Resolve project paths.** Check environment variables first, then ask only for
+   what's missing:
+   - `OSPREY_RULES_PATH` — path to the Osprey rules project directory (contains `main.sml`)
+   - `OSPREY_REPO_PATH` — path to the `osprey-for-atproto` repository (contains `osprey_worker/`)
+
+   Read these via Bash: `echo "$OSPREY_RULES_PATH"` and `echo "$OSPREY_REPO_PATH"`.
+   If either is empty or unset, use `AskUserQuestion` to request only the missing path(s).
+   Store both for all subsequent dispatches.
 2. Determine the user's intent and select the appropriate flow from the routing
    table below.
 

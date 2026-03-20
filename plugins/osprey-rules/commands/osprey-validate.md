@@ -12,16 +12,19 @@ Validates an Osprey SML rules project by running `uv run osprey-cli push-rules <
 
 First, determine the path to the Osprey rules project.
 
-If `$ARGUMENTS` is provided and non-empty, use it as the rules project path:
+Resolution order (first match wins):
+1. `$ARGUMENTS` if provided and non-empty
+2. `$OSPREY_RULES_PATH` environment variable
+3. Ask the user via `AskUserQuestion`
 
 ```bash
-RULES_PATH="$ARGUMENTS"
-```
-
-If no argument is provided, ask the user for the path:
-
-```bash
-# Use AskUserQuestion to prompt for the path
+if [ -n "$ARGUMENTS" ]; then
+  RULES_PATH="$ARGUMENTS"
+elif [ -n "$OSPREY_RULES_PATH" ]; then
+  RULES_PATH="$OSPREY_RULES_PATH"
+else
+  # Use AskUserQuestion to prompt for the path
+fi
 ```
 
 After obtaining the path, validate it contains `main.sml`:
@@ -39,7 +42,15 @@ fi
 
 **Persist the osprey repo path for the session.** Once resolved, reuse it on subsequent validations without re-asking.
 
-### Strategy 1: Infer from the rules project path
+### Strategy 1: Check environment variable
+
+```bash
+if [ -n "$OSPREY_REPO_PATH" ] && [ -d "$OSPREY_REPO_PATH/osprey_worker" ]; then
+  OSPREY_REPO="$OSPREY_REPO_PATH"
+fi
+```
+
+### Strategy 2: Infer from the rules project path
 
 Walk up from the rules project path looking for the osprey repo. For example, if the rules path is `/dev/osprey/rules`, check whether `/dev/osprey/` (or any ancestor) contains `osprey_worker/` — which indicates it is the `osprey-for-atproto` repo root.
 
@@ -55,7 +66,7 @@ while [ "$CANDIDATE" != "/" ]; do
 done
 ```
 
-### Strategy 2: Ask the user
+### Strategy 3: Ask the user
 
 If inference fails, use `AskUserQuestion` to ask the user for the path to `osprey-for-atproto`. The user may provide either:
 

@@ -49,11 +49,19 @@ The orchestrator routes user intent to the right flow:
   - Review→fix loop maxes at 5 cycles then escalates to human
   - Labels must exist in `config/labels.yaml` before use in effects
 - **Expects**:
-  - Access to `osprey-for-atproto` repo (user-provided path, used for validation and UDF discovery)
+  - Access to `osprey-for-atproto` repo (via `OSPREY_REPO_PATH` env var or user-provided path)
+  - A valid Osprey rules project (via `OSPREY_RULES_PATH` env var or user-provided path)
   - `osprey-rule-investigator` plugin installed (used by orchestrator for project analysis in Flows 1-3)
   - `uv` installed for running `uv run osprey-cli` and `uv sync`
-  - A valid Osprey rules project with `main.sml`, `config/`, `models/`, `rules/`
-  - User provides project path on first invocation
+
+## Environment Variables (Optional)
+
+| Variable | Purpose |
+|----------|---------|
+| `OSPREY_RULES_PATH` | Path to the Osprey rules project directory (contains `main.sml`). Skips asking the user. |
+| `OSPREY_REPO_PATH` | Path to the `osprey-for-atproto` repository (contains `osprey_worker/`). Skips asking the user. |
+
+Set these in `~/.claude/settings.json` under `env` or export them in your shell profile. If unset, agents will ask via `AskUserQuestion` on first invocation.
 
 ## Dependencies
 

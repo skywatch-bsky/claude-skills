@@ -1,7 +1,7 @@
 {
   "name": "osprey-rules",
   "description": "Orchestrator plugin for writing, reviewing, and debugging Osprey SML moderation rules for atproto. Dispatches specialized subagents (planner, implementor, reviewer, debugger) via a thin coordinator.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "author": {
     "name": "Skywatch Blue"
   },
