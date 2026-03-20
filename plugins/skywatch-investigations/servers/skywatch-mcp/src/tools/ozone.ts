@@ -14,54 +14,77 @@ type SubjectRef =
   | { $type: "com.atproto.admin.defs#repoRef"; did: string }
   | { $type: "com.atproto.repo.strongRef"; uri: string };
 
+type ModTool = {
+  readonly name: string;
+  readonly meta: {
+    readonly time: string;
+    readonly externalUrl: string;
+  };
+};
+
 type OzoneEventRequest = {
   readonly event: {
     readonly $type: "tools.ozone.moderation.defs#modEventLabel";
+    readonly comment?: string;
     readonly createLabelVals: ReadonlyArray<string>;
     readonly negateLabelVals: ReadonlyArray<string>;
   };
   readonly subject: SubjectRef;
   readonly createdBy: string;
+  readonly createdAt: string;
+  readonly modTool: ModTool;
 };
 
 export function buildOzoneRequest(
   subject: string,
   label: string,
   action: "apply" | "remove",
-  createdBy: string
+  createdBy: string,
+  comment?: string,
+  externalUrl?: string
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
+  const event = {
+    $type: "tools.ozone.moderation.defs#modEventLabel" as const,
+    ...(comment ? { comment } : {}),
+    createLabelVals: action === "apply" ? [label] : [],
+    negateLabelVals: action === "remove" ? [label] : [],
+  };
+
+  const now = new Date().toISOString();
+  const modTool: ModTool = {
+    name: "skywatch-mcp",
+    meta: {
+      time: now,
+      externalUrl: externalUrl ?? `at://${subject}`,
+    },
+  };
+
   if (subject.startsWith("did:")) {
-    const subjectRef: SubjectRef = {
-      $type: "com.atproto.admin.defs#repoRef",
-      did: subject,
-    };
     return {
       ok: true,
       request: {
-        event: {
-          $type: "tools.ozone.moderation.defs#modEventLabel",
-          createLabelVals: action === "apply" ? [label] : [],
-          negateLabelVals: action === "remove" ? [label] : [],
+        event,
+        subject: {
+          $type: "com.atproto.admin.defs#repoRef",
+          did: subject,
         },
-        subject: subjectRef,
         createdBy,
+        createdAt: now,
+        modTool,
       },
     };
   } else if (subject.startsWith("at://")) {
-    const subjectRef: SubjectRef = {
-      $type: "com.atproto.repo.strongRef",
-      uri: subject,
-    };
     return {
       ok: true,
       request: {
-        event: {
-          $type: "tools.ozone.moderation.defs#modEventLabel",
-          createLabelVals: action === "apply" ? [label] : [],
-          negateLabelVals: action === "remove" ? [label] : [],
+        event,
+        subject: {
+          $type: "com.atproto.repo.strongRef",
+          uri: subject,
         },
-        subject: subjectRef,
         createdBy,
+        createdAt: now,
+        modTool,
       },
     };
   } else {
@@ -94,6 +117,14 @@ export async function registerOzoneTool(
       action: z
         .enum(["apply", "remove"])
         .describe("Whether to apply or remove the label"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment to attach to the label event"),
+      externalUrl: z
+        .string()
+        .optional()
+        .describe("Optional external URL (e.g. Obsidian link or report link) to associate with the label event"),
     },
     async (args) => {
       try {
@@ -109,9 +140,9 @@ export async function registerOzoneTool(
           };
         }
 
-        const { subject, label, action } = args;
+        const { subject, label, action, comment, externalUrl } = args;
 
-        const result = buildOzoneRequest(subject, label, action, config.did);
+        const result = buildOzoneRequest(subject, label, action, config.did, comment, externalUrl);
         if (!result.ok) {
           return {
             isError: true,
