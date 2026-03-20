@@ -36,20 +36,31 @@ const clickhouseConfig: ClickHouseConnectionConfig =
         database: getEnv("CLICKHOUSE_DATABASE", "default"),
       };
 
-const client = createClickHouseClient(clickhouseConfig);
+let _client: ReturnType<typeof createClickHouseClient> | null = null;
+function getClient() {
+  if (!_client) {
+    _client = createClickHouseClient(clickhouseConfig);
+  }
+  return _client;
+}
+
+const lazyClient = {
+  query: (sql: string) => getClient().query(sql),
+  getSchema: () => getClient().getSchema(),
+};
 
 const server = new McpServer({
   name: "skywatch-mcp",
   version: "0.1.0",
 });
 
-await registerClickHouseTools(server, client);
+await registerClickHouseTools(server, lazyClient);
 
 await registerDomainTool(server);
 await registerIpTool(server);
 await registerUrlTool(server);
 await registerWhoisTool(server);
-await registerContentTool(server, client);
+await registerContentTool(server, lazyClient);
 
 const ozoneConfig: OzoneConfig = {
   serviceUrl: process.env["OZONE_SERVICE_URL"] ?? null,
