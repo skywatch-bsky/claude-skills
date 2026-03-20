@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugins for Skywatch — Osprey SML rule authoring, rule investigation, and AT Protocol network investigations",
-    "version": "0.7",
+    "version": "0.8",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -51,7 +51,7 @@
       "name": "skywatch-investigations",
       "source": "./plugins/skywatch-investigations",
       "description": "Investigation toolkit for AT Protocol network analysis — MCP tools for ClickHouse data access, domain/IP/URL recon, content similarity, and Ozone labelling, with skills codifying investigation methodology and agents orchestrating the full workflow.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Skywatch Blue"
       },
