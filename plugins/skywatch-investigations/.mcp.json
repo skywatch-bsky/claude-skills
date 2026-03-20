@@ -13,10 +13,7 @@
         "CLICKHOUSE_DATABASE": "default",
         "SSH_HOST": "",
         "SSH_USER": "",
-        "SSH_DOCKER_CONTAINER": "",
-        "OZONE_SERVICE_URL": "",
-        "OZONE_ADMIN_PASSWORD": "",
-        "OZONE_DID": ""
+        "SSH_DOCKER_CONTAINER": ""
       }
     }
   }
