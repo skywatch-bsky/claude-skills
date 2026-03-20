@@ -158,13 +158,13 @@ export async function registerOzoneTool(
     },
     async (args) => {
       try {
-        if (!config.serviceUrl || !config.adminPassword || !config.did || !config.pdsHost) {
+        if (!config.adminPassword || !config.did || !config.pdsHost) {
           return {
             isError: true,
             content: [
               {
                 type: "text",
-                text: "Ozone is not configured. Set OZONE_SERVICE_URL, OZONE_ADMIN_PASSWORD, OZONE_DID, and OZONE_PDS environment variables.",
+                text: "Ozone is not configured. Set OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
               },
             ],
           };
@@ -189,7 +189,7 @@ export async function registerOzoneTool(
         const accessJwt = await getAccessToken(config);
 
         const response = await fetch(
-          `${config.serviceUrl}/xrpc/tools.ozone.moderation.emitEvent`,
+          `https://${config.pdsHost}/xrpc/tools.ozone.moderation.emitEvent`,
           {
             method: "POST",
             headers: {
