@@ -136,6 +136,27 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
+
+    it("should accept queries targeting pds_signup_anomalies", () => {
+      const result = validateQuery(
+        "SELECT * FROM pds_signup_anomalies LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.pds_signup_anomalies", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.pds_signup_anomalies LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept case-insensitive pds_signup_anomalies", () => {
+      const result = validateQuery(
+        "SELECT * FROM PDS_SIGNUP_ANOMALIES LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe("Case-insensitive handling", () => {
