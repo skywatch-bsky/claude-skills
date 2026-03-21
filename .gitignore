@@ -1,6 +1,9 @@
 # User data and analysis
 .obsidian/**
 
+# Build output
+**/dist
+
 # Dependencies
 **/node_modules
 
