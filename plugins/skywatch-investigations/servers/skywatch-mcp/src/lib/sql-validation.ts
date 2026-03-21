@@ -72,12 +72,17 @@ export function validateQuery(sql: string): ValidationResult {
   }
 
   const tableRef = fromMatch[1];
-  const validTables = ["OSPREY_EXECUTION_RESULTS", "DEFAULT.OSPREY_EXECUTION_RESULTS"];
+  const validTables = [
+    "OSPREY_EXECUTION_RESULTS",
+    "DEFAULT.OSPREY_EXECUTION_RESULTS",
+    "PDS_SIGNUP_ANOMALIES",
+    "DEFAULT.PDS_SIGNUP_ANOMALIES",
+  ];
 
   if (!validTables.includes(tableRef)) {
     return {
       valid: false,
-      reason: `Query can only target 'osprey_execution_results' or 'default.osprey_execution_results', but targets '${tableRef}'`,
+      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies), but targets '${tableRef}'`,
     };
   }
 
