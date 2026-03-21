@@ -11,7 +11,7 @@ export async function registerClickHouseTools(
 ): Promise<void> {
   server.tool(
     "clickhouse_query",
-    "Execute a read-only SQL query against the Osprey ClickHouse database. Only SELECT queries with LIMIT against osprey_execution_results are allowed.",
+    "Execute a read-only SQL query against the Osprey ClickHouse database. Only SELECT queries with LIMIT against osprey_execution_results or pds_signup_anomalies are allowed.",
     {
       sql: z
         .string()
