@@ -16,7 +16,8 @@ function getEnv(key: string, defaultValue: string): string {
   return process.env[key] ?? defaultValue;
 }
 
-const mode = getEnv("CLICKHOUSE_MODE", "ssh");
+const tailnetIp = process.env["CLICKHOUSE_TAILNET_IP"];
+const mode = tailnetIp ? "direct" : getEnv("CLICKHOUSE_MODE", "ssh");
 
 const clickhouseConfig: ClickHouseConnectionConfig =
   mode === "ssh"
@@ -29,7 +30,7 @@ const clickhouseConfig: ClickHouseConnectionConfig =
       }
     : {
         mode: "direct",
-        host: getEnv("CLICKHOUSE_HOST", "http://localhost"),
+        host: tailnetIp ? `http://${tailnetIp}` : getEnv("CLICKHOUSE_HOST", "http://localhost"),
         port: Number(getEnv("CLICKHOUSE_PORT", "8123")),
         username: getEnv("CLICKHOUSE_USER", "default"),
         password: getEnv("CLICKHOUSE_PASSWORD", ""),
