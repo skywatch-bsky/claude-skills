@@ -56,7 +56,7 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
 
       const response = await client.query({
         query: validation.normalized,
-        format: "JSONEachRow",
+        format: "JSON",
         clickhouse_settings: {
           max_execution_time: 60,
         },
@@ -97,7 +97,7 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
     async getSchema(): Promise<QueryResult> {
       const response = await client.query({
         query: "DESCRIBE TABLE default.osprey_execution_results",
-        format: "JSONEachRow",
+        format: "JSON",
       });
 
       const text = await response.text();
@@ -105,8 +105,11 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
 
       let rows: Array<Record<string, unknown>> = [];
 
-      if (Array.isArray(parsed)) {
-        rows = parsed;
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        const obj = parsed as Record<string, unknown>;
+        if (Array.isArray(obj["data"])) {
+          rows = obj["data"] as Array<Record<string, unknown>>;
+        }
       }
 
       const schemaColumns = rows.map((row: unknown) => {
