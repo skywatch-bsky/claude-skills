@@ -57,12 +57,15 @@ describe("buildOzoneRequest", () => {
     expect(result.request.createdBy).toBe("did:plc:moderator456");
   });
 
-  it("should build request for AT-URI subject with remove action", () => {
+  it("should build request for AT-URI subject with remove action and cid", () => {
     const result = buildOzoneRequest(
       "at://did:plc:example/app.bsky.feed.post/abc123",
       "spam",
       "remove",
-      "did:plc:moderator456"
+      "did:plc:moderator456",
+      undefined,
+      undefined,
+      "bafyreiexample123"
     );
 
     if (!result.ok) {
@@ -72,9 +75,25 @@ describe("buildOzoneRequest", () => {
     expect(result.request.subject).toEqual({
       $type: "com.atproto.repo.strongRef",
       uri: "at://did:plc:example/app.bsky.feed.post/abc123",
+      cid: "bafyreiexample123",
     });
     expect(result.request.event.createLabelVals).toEqual([]);
     expect(result.request.event.negateLabelVals).toEqual(["spam"]);
+  });
+
+  it("should reject AT-URI subject without cid", () => {
+    const result = buildOzoneRequest(
+      "at://did:plc:example/app.bsky.feed.post/abc123",
+      "spam",
+      "apply",
+      "did:plc:moderator456"
+    );
+
+    if (result.ok) {
+      throw new Error("Should have error");
+    }
+
+    expect(result.error).toContain("cid");
   });
 
   it("should reject invalid subject format", () => {

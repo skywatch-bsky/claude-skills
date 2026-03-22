@@ -52,7 +52,7 @@ You have direct access to these MCP tools. Use them when you need infrastructure
 - `url_expand` — Follow redirect chains, identify final destination
 - `whois_lookup` — Domain registration details, registrant information
 - `content_similarity` — Find posts or accounts with similar content patterns
-- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). Accepts an optional `batchId` (UUID) to group related label operations.
+- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). For account-level labels, pass a DID as subject. For post-level labels, pass an AT-URI as subject along with its `cid` (resolve via `com.atproto.repo.getRecord`). Accepts an optional `batchId` (UUID) to group related label operations.
 
 ### Analysis & Labelling
 Use your investigation findings to support any labelling decisions. Never apply labels without evidence from the investigation.

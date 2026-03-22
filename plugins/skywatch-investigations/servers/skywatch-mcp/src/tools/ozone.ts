@@ -36,7 +36,7 @@ export type OzoneConfig = {
 
 type SubjectRef =
   | { $type: "com.atproto.admin.defs#repoRef"; did: string }
-  | { $type: "com.atproto.repo.strongRef"; uri: string };
+  | { $type: "com.atproto.repo.strongRef"; uri: string; cid: string };
 
 type ModTool = {
   readonly name: string;
@@ -65,7 +65,8 @@ export function buildOzoneRequest(
   action: "apply" | "remove",
   createdBy: string,
   comment?: string,
-  batchId?: string
+  batchId?: string,
+  cid?: string
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
   const event = {
     $type: "tools.ozone.moderation.defs#modEventLabel" as const,
@@ -98,6 +99,12 @@ export function buildOzoneRequest(
       },
     };
   } else if (subject.startsWith("at://")) {
+    if (!cid) {
+      return {
+        ok: false,
+        error: "AT-URI subjects require a cid parameter. Use com.atproto.repo.getRecord to resolve the CID for the record.",
+      };
+    }
     return {
       ok: true,
       request: {
@@ -105,6 +112,7 @@ export function buildOzoneRequest(
         subject: {
           $type: "com.atproto.repo.strongRef",
           uri: subject,
+          cid,
         },
         createdBy,
         createdAt: now,
@@ -189,7 +197,7 @@ export async function registerOzoneTool(
 ): Promise<void> {
   server.tool(
     "ozone_label",
-    "Apply or remove a moderation label on a subject (DID or AT-URI) via the Ozone moderation service.",
+    "Apply or remove a moderation label on a subject via the Ozone moderation service. For account labels, pass a DID. For post/record labels, pass an AT-URI with its CID (resolve via com.atproto.repo.getRecord).",
     {
       subject: z
         .string()
@@ -202,6 +210,10 @@ export async function registerOzoneTool(
         .string()
         .optional()
         .describe("Optional comment to attach to the label event"),
+      cid: z
+        .string()
+        .optional()
+        .describe("CID (content hash) of the record. Required when subject is an AT-URI for post-level labelling. Not needed for account-level labels (DID subjects). Resolve via com.atproto.repo.getRecord."),
       batchId: z
         .string()
         .uuid()
@@ -222,9 +234,9 @@ export async function registerOzoneTool(
           };
         }
 
-        const { subject, label, action, comment, batchId } = args;
+        const { subject, label, action, comment, cid, batchId } = args;
 
-        const result = buildOzoneRequest(subject, label, action, config.did, comment, batchId);
+        const result = buildOzoneRequest(subject, label, action, config.did, comment, batchId, cid);
         if (!result.ok) {
           return {
             isError: true,
