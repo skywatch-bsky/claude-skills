@@ -77,12 +77,16 @@ export function validateQuery(sql: string): ValidationResult {
     "DEFAULT.OSPREY_EXECUTION_RESULTS",
     "PDS_SIGNUP_ANOMALIES",
     "DEFAULT.PDS_SIGNUP_ANOMALIES",
+    "URL_OVERDISPERSION_RESULTS",
+    "DEFAULT.URL_OVERDISPERSION_RESULTS",
+    "ACCOUNT_ENTROPY_RESULTS",
+    "DEFAULT.ACCOUNT_ENTROPY_RESULTS",
   ];
 
   if (!validTables.includes(tableRef)) {
     return {
       valid: false,
-      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies), but targets '${tableRef}'`,
+      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results), but targets '${tableRef}'`,
     };
   }
 

@@ -30,11 +30,19 @@ SELECT ... FROM default.osprey_execution_results WHERE ...
 
 **Table Restriction**
 
-Only the `default.osprey_execution_results` table may be queried. Joins, subqueries targeting other tables, and cross-database queries are blocked.
+Only the following tables may be queried:
+- `default.osprey_execution_results` — Osprey rule execution history
+- `default.pds_signup_anomalies` — PDS signup rate anomalies
+- `default.url_overdispersion_results` — Coordinated domain sharing anomalies
+- `default.account_entropy_results` — Bot-like posting pattern detection
+
+Joins, subqueries targeting other tables, and cross-database queries are blocked.
 
 ```sql
 -- Good
-SELECT * FROM default.osprey_execution_results WHERE ...
+SELECT * FROM default.osprey_execution_results WHERE ... LIMIT 100
+SELECT * FROM default.account_entropy_results WHERE is_bot_like = 1 LIMIT 50
+SELECT * FROM default.url_overdispersion_results WHERE is_anomaly = 1 LIMIT 50
 
 -- Bad (will be rejected)
 SELECT * FROM default.osprey_execution_results o
@@ -166,7 +174,7 @@ LIMIT 1000
 
 ## Common Query Patterns Overview
 
-Investigation queries typically fall into five categories:
+Investigation queries typically fall into seven categories:
 
 ### Account Queries
 
@@ -213,6 +221,24 @@ See `references/common-queries.md` for patterns:
 - Hit rate per rule
 - False positive candidates
 - Rule coverage analysis
+
+### Account Entropy Queries
+
+Query `account_entropy_results` to identify accounts with bot-like posting patterns based on Shannon entropy analysis.
+
+See `references/common-queries.md` for patterns:
+- Bot-like accounts (both flags)
+- Soft screening (one flag)
+- Cross-referencing with rule hits
+
+### URL Overdispersion Queries
+
+Query `url_overdispersion_results` to identify domains being shared in statistically anomalous patterns.
+
+See `references/common-queries.md` for patterns:
+- Anomalous domain sharing
+- Domain sharing history/trends
+- Cross-referencing bot accounts with anomalous domains
 
 ## Column Quick Reference
 
@@ -262,9 +288,11 @@ NULL values in columns like `follower_count` or `post_count` indicate data was u
 
 ## Next Steps
 
-- Review `references/common-queries.md` for 15+ proven query patterns
+- Review `references/common-queries.md` for 25 proven query patterns
 - Start with Account investigation queries to understand your targets
 - Use Temporal queries to identify trends
 - Use Content queries for copypasta and similarity detection
 - Use Infrastructure queries for network analysis
 - Use Rule Performance queries to optimize rule definitions
+- Use Account Entropy queries to detect bot-like accounts
+- Use URL Overdispersion queries to detect coordinated domain sharing campaigns

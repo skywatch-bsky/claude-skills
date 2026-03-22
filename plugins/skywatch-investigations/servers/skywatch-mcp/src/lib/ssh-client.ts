@@ -72,8 +72,37 @@ export function createSshClient(config: SshClientConfig): SshClient {
     },
 
     async getSchema(): Promise<QueryResult> {
-      const describeQuery = "DESCRIBE TABLE default.osprey_execution_results";
-      return executeCommand(describeQuery);
+      const tables = [
+        "default.osprey_execution_results",
+        "default.pds_signup_anomalies",
+        "default.url_overdispersion_results",
+        "default.account_entropy_results",
+      ];
+
+      let combined: QueryResult = { columns: [], rows: [] };
+
+      for (const table of tables) {
+        try {
+          const result = await executeCommand(`DESCRIBE TABLE ${table}`);
+          const taggedRows = result.rows.map((row) => ({ ...row, table }));
+
+          if (combined.columns.length === 0) {
+            combined = {
+              columns: [...result.columns, { name: "table", type: "String" }],
+              rows: taggedRows,
+            };
+          } else {
+            combined = {
+              columns: combined.columns,
+              rows: [...combined.rows, ...taggedRows],
+            };
+          }
+        } catch {
+          // Table may not exist in this environment — skip
+        }
+      }
+
+      return combined;
     },
   };
 }

@@ -23,19 +23,19 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
 - **MCP Tools** (8 total):
-  - `clickhouse_query` — Execute read-only queries against osprey_execution_results
-  - `clickhouse_schema` — Discover table structure and column definitions
+  - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results
+  - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
   - `content_similarity` — Detect text similarity via ClickHouse ngramDistance
   - `domain_check` — Verify domain registration and WHOIS data
   - `ip_lookup` — Geolocate IP addresses via ip-api.com
   - `url_expand` — Expand shortened URLs to full targets
   - `whois_lookup` — Query WHOIS databases for registrant information
-  - `ozone_label` — Apply/remove moderation labels via Ozone API (supports comment and externalUrl)
+  - `ozone_label` — Apply/remove moderation labels via Ozone API (supports comment and batchId for grouping related label operations)
 
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
-- All ClickHouse queries are read-only (SELECT + LIMIT only, osprey_execution_results table only)
+- All ClickHouse queries are read-only (SELECT + LIMIT only, restricted to: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results)
 - Ozone labelling requires explicit credentials — fails gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
@@ -48,7 +48,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 ## Dependencies
 
-- **Uses**: ClickHouse (osprey_execution_results table), ip-api.com (GeoIP), WHOIS servers, Ozone API
+- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results tables), ip-api.com (GeoIP), WHOIS servers, Ozone API
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Does NOT overlap with osprey-rules plugin (rule writing) or osprey-rule-investigator (rule project analysis). The `accessing-osprey` skill provides context about the Osprey system but directs users to osprey-rules for rule authoring.
 
@@ -62,6 +62,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "How do I query ClickHouse effectively?" | `querying-clickhouse` skill |
 | "Conduct a full investigation" | `investigator` agent (loads methodology automatically) |
 | "Write a report on these findings" | `reporting-results` skill |
+| "Check if this account is a bot" | `data-analyst` agent (query `account_entropy_results`) |
+| "Find coordinated domain sharing" | `data-analyst` agent (query `url_overdispersion_results`) |
 
 ## Key Files
 

@@ -17,9 +17,13 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - Pull all hits across all rules for the past 30-90 days
 - Note which rules trigger most frequently
 - Check for domain or URL mentions in the flagged content
+- Check `account_entropy_results` for bot-like flags on target accounts
+- Check `url_overdispersion_results` for anomalous domain sharing involving target accounts
 
 **Tool Guidance:**
 - `clickhouse_query` — Extract rule hit history, temporal distribution, rule types triggered
+- `clickhouse_query` on `account_entropy_results` — Check if target accounts are flagged as bot-like
+- `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear in anomalous domain sharing events (via `sample_dids`)
 - `domain_check` — Verify any domains mentioned in problematic content
 
 **Signals to Document:**
@@ -27,6 +31,8 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - Temporal clustering — are hits concentrated in time windows?
 - Rule patterns — which rules trigger repeatedly?
 - Content red flags — domains, repeated phrases, suspicious URLs
+- Account entropy flags — is the account flagged as bot-like? What are the entropy values?
+- Domain overdispersion — are any domains shared by this account flagged as anomalous?
 
 **Decision Point:**
 - Does the account show patterns worth deeper investigation?
@@ -44,9 +50,11 @@ Build a comprehensive profile of the target account(s). This phase focuses on un
 - Posting patterns: frequency, timing, content themes
 - Infrastructure: PDS host, account creation date, registration domain (if applicable)
 - Profile characteristics: avatar, display name, bio changes
+- Account entropy scores — hourly and interval entropy values, bot-like classification
 
 **Tool Guidance:**
 - `clickhouse_query` — Generate detailed activity timelines, aggregate posting statistics by hour/day
+- `clickhouse_query` on `account_entropy_results` — Get entropy scores for target accounts. High `hourly_entropy` (≥ 3.9) indicates uniform 24-hour posting; low `interval_entropy` (≤ 1.5) indicates mechanical spacing. Both = `is_bot_like`.
 - `ip_lookup` — Resolve any IP addresses associated with content or metadata
 - `whois_lookup` — Query registration details for discovered domains
 
@@ -55,6 +63,7 @@ Build a comprehensive profile of the target account(s). This phase focuses on un
 - Content themes and language patterns
 - Account age relative to activity intensity
 - Infrastructure patterns (shared PDS, content delivery patterns)
+- Entropy profile — does the account's temporal signature look automated? Compare raw values against thresholds.
 
 **Decision Point:**
 - Is the behaviour consistent with a bot, human, or coordinated group?
@@ -71,16 +80,22 @@ Find connected accounts. This phase identifies other accounts exhibiting similar
 - Content similarity matching across the network
 - Temporal correlation: accounts posting identical or similar content at similar times
 - Infrastructure correlation: accounts sharing PDS hosts, domains, or IP patterns
+- Shared bot-like entropy profiles across accounts
+- Shared anomalous domain sharing patterns
 
 **Tool Guidance:**
 - `content_similarity` — Find accounts posting the same or similar content (detects copypasta, template reuse)
 - `clickhouse_query` with GROUP BY — Cluster accounts by shared patterns (same URLs, same domains, same posting times)
+- `clickhouse_query` on `account_entropy_results` — Check if multiple target accounts share bot-like flags. A cluster of accounts all flagged `is_bot_like = 1` with similar entropy profiles is a strong coordination signal.
+- `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear together in `sample_dids` for the same anomalous domain. Accounts co-occurring in domain campaigns establishes linkage.
 
 **Signals to Document:**
 - Content overlap (exact matches vs. paraphrased)
 - Timing synchronisation — do linked accounts post within minutes of each other?
 - Shared infrastructure — PDS hosts, domain registrations, ASN overlap
 - Account clustering — which accounts form tight groups?
+- Shared automation signature — do linked accounts have similar entropy profiles?
+- Domain campaign co-participation — do accounts share the same anomalous domains?
 
 **Decision Point:**
 - Is there evidence of coordination or are these coincidental similarities?
@@ -174,6 +189,8 @@ What constitutes sufficient evidence for different conclusion types:
 - Temporal clustering of identical content: strong indicator
 - Shared infrastructure + content similarity: very strong indicator
 - Absence of other explanations (no public copying of same content): increases confidence
+- Multiple accounts flagged `is_bot_like` sharing the same anomalous domain: very strong indicator
+- Accounts with near-identical entropy profiles (similar hourly_entropy and interval_entropy values): moderate indicator
 
 **Rule Coverage:**
 - 80%+ of problematic accounts hit at least one rule: adequate coverage

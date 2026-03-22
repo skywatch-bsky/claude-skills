@@ -20,7 +20,7 @@ type ModTool = {
   readonly name: string;
   readonly meta: {
     readonly time: string;
-    readonly externalUrl: string;
+    readonly batchId: string;
   };
 };
 
@@ -43,7 +43,7 @@ export function buildOzoneRequest(
   action: "apply" | "remove",
   createdBy: string,
   comment?: string,
-  externalUrl?: string
+  batchId?: string
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
   const event = {
     $type: "tools.ozone.moderation.defs#modEventLabel" as const,
@@ -57,7 +57,7 @@ export function buildOzoneRequest(
     name: "skywatch-mcp",
     meta: {
       time: now,
-      externalUrl: externalUrl ?? `at://${subject}`,
+      batchId: batchId ?? Bun.randomUUIDv7(),
     },
   };
 
@@ -180,10 +180,11 @@ export async function registerOzoneTool(
         .string()
         .optional()
         .describe("Optional comment to attach to the label event"),
-      externalUrl: z
+      batchId: z
         .string()
+        .uuid()
         .optional()
-        .describe("Optional external URL (e.g. Obsidian link or report link) to associate with the label event"),
+        .describe("UUID to group related label operations into a batch. All labels applied as part of the same investigation action should share one batchId. If omitted, a new UUID is generated per call."),
     },
     async (args) => {
       try {
@@ -199,9 +200,9 @@ export async function registerOzoneTool(
           };
         }
 
-        const { subject, label, action, comment, externalUrl } = args;
+        const { subject, label, action, comment, batchId } = args;
 
-        const result = buildOzoneRequest(subject, label, action, config.did, comment, externalUrl);
+        const result = buildOzoneRequest(subject, label, action, config.did, comment, batchId);
         if (!result.ok) {
           return {
             isError: true,

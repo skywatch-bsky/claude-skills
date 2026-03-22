@@ -157,6 +157,48 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
+
+    it("should accept queries targeting url_overdispersion_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM url_overdispersion_results LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.url_overdispersion_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.url_overdispersion_results LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting account_entropy_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM account_entropy_results LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.account_entropy_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.account_entropy_results LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept case-insensitive url_overdispersion_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM URL_OVERDISPERSION_RESULTS LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept case-insensitive account_entropy_results", () => {
+      const result = validateQuery(
+        "SELECT * FROM ACCOUNT_ENTROPY_RESULTS LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe("Case-insensitive handling", () => {

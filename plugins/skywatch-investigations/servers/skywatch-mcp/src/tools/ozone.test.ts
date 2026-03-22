@@ -139,4 +139,90 @@ describe("buildOzoneRequest", () => {
 
     expect(result.request.createdBy).toBe(did);
   });
+
+  it("should generate a UUID batchId when none provided", () => {
+    const result = buildOzoneRequest(
+      "did:plc:example123",
+      "spam",
+      "apply",
+      "did:plc:moderator456"
+    );
+
+    if (!result.ok) {
+      throw new Error("Should not have error");
+    }
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+    expect(result.request.modTool.meta.batchId).toMatch(uuidRegex);
+  });
+
+  it("should use provided batchId across multiple calls", () => {
+    const batchId = "550e8400-e29b-41d4-a716-446655440000";
+
+    const result1 = buildOzoneRequest(
+      "did:plc:account1",
+      "spam",
+      "apply",
+      "did:plc:moderator456",
+      undefined,
+      batchId
+    );
+
+    const result2 = buildOzoneRequest(
+      "did:plc:account2",
+      "spam",
+      "apply",
+      "did:plc:moderator456",
+      undefined,
+      batchId
+    );
+
+    if (!result1.ok || !result2.ok) {
+      throw new Error("Should not have error");
+    }
+
+    expect(result1.request.modTool.meta.batchId).toBe(batchId);
+    expect(result2.request.modTool.meta.batchId).toBe(batchId);
+  });
+
+  it("should generate UUIDv7 (sortable by time) when none provided", () => {
+    const result = buildOzoneRequest(
+      "did:plc:example123",
+      "spam",
+      "apply",
+      "did:plc:moderator456"
+    );
+
+    if (!result.ok) {
+      throw new Error("Should not have error");
+    }
+
+    const batchId = result.request.modTool.meta.batchId;
+    const versionNibble = batchId.charAt(14);
+    expect(versionNibble).toBe("7");
+  });
+
+  it("should generate different batchIds for separate calls without batchId", () => {
+    const result1 = buildOzoneRequest(
+      "did:plc:account1",
+      "spam",
+      "apply",
+      "did:plc:moderator456"
+    );
+
+    const result2 = buildOzoneRequest(
+      "did:plc:account2",
+      "spam",
+      "apply",
+      "did:plc:moderator456"
+    );
+
+    if (!result1.ok || !result2.ok) {
+      throw new Error("Should not have error");
+    }
+
+    expect(result1.request.modTool.meta.batchId).not.toBe(
+      result2.request.modTool.meta.batchId
+    );
+  });
 });

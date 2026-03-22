@@ -528,6 +528,152 @@ LIMIT 1
 
 ---
 
+---
+
+## 21. Bot-Like Accounts (Account Entropy)
+
+**Purpose:** Find accounts flagged as bot-like by the account entropy sidecar. Both hourly and interval entropy signals must fire for `is_bot_like = 1`.
+
+**SQL:**
+```sql
+SELECT
+  user_id,
+  post_count,
+  hourly_entropy,
+  interval_entropy,
+  mean_interval_seconds,
+  stddev_interval_seconds,
+  is_bot_like,
+  sample_rkeys
+FROM default.account_entropy_results
+WHERE is_bot_like = 1
+  AND run_timestamp > now() - interval 1 day
+ORDER BY post_count DESC
+LIMIT 50
+```
+
+**Output:** Accounts ranked by post volume where both entropy signals flagged automation. `sample_rkeys` provides AT Protocol record keys for manual content review.
+
+**Notes:** Use `hourly_flag = 1` or `interval_flag = 1` alone for softer screening. `hourly_entropy` near 4.585 (max) means perfectly uniform posting across all 24 hours. `interval_entropy` near 0 means all inter-post gaps fall in the same bin.
+
+---
+
+## 22. Accounts with Suspicious Entropy (Soft Screen)
+
+**Purpose:** Find accounts that trip one entropy signal but not both. Useful for identifying borderline cases or accounts using more sophisticated automation.
+
+**SQL:**
+```sql
+SELECT
+  user_id,
+  post_count,
+  hourly_entropy,
+  interval_entropy,
+  mean_interval_seconds,
+  is_bot_like,
+  hourly_flag,
+  interval_flag
+FROM default.account_entropy_results
+WHERE (hourly_flag = 1 OR interval_flag = 1)
+  AND is_bot_like = 0
+  AND run_timestamp > now() - interval 1 day
+ORDER BY hourly_entropy DESC
+LIMIT 100
+```
+
+**Output:** Accounts with one flag but not both. May include shift workers (hourly only) or burst posters (interval only).
+
+---
+
+## 23. Anomalous Domain Sharing (URL Overdispersion)
+
+**Purpose:** Find domains being shared in statistically unusual patterns — potential coordinated campaigns.
+
+**SQL:**
+```sql
+SELECT
+  domain,
+  granularity,
+  bucket_start,
+  total_shares,
+  unique_sharers,
+  sharer_density,
+  volume_p_value,
+  density_p_value,
+  baseline_source,
+  sample_dids
+FROM default.url_overdispersion_results
+WHERE is_anomaly = 1
+  AND run_timestamp > now() - interval 1 day
+ORDER BY volume_p_value ASC
+LIMIT 50
+```
+
+**Output:** Domains ranked by statistical surprise. Low `volume_p_value` means unexpectedly high share volume. Low `density_p_value` means unusually many unique sharers (one-share-per-account pattern). `sample_dids` provides starting accounts for deeper investigation.
+
+**Notes:** `baseline_source = 'entity'` means the domain has its own history for comparison (more reliable). `baseline_source = 'population'` means it's compared against the population median (new/rare domain).
+
+---
+
+## 24. Domain Sharing History (URL Overdispersion Trend)
+
+**Purpose:** Track a specific domain's overdispersion scores over time. Useful for understanding whether a campaign is ongoing or a one-off spike.
+
+**SQL:**
+```sql
+SELECT
+  run_timestamp,
+  granularity,
+  bucket_start,
+  total_shares,
+  unique_sharers,
+  sharer_density,
+  volume_p_value,
+  density_p_value,
+  is_anomaly
+FROM default.url_overdispersion_results
+WHERE domain = 'example.com'
+  AND run_timestamp > now() - interval 7 day
+ORDER BY run_timestamp DESC
+LIMIT 100
+```
+
+**Output:** Time series of a domain's sharing statistics and anomaly flags.
+
+---
+
+## 25. Cross-Reference: Bot Accounts Sharing Anomalous Domains
+
+**Purpose:** Find accounts flagged as bot-like that also appear in the sample_dids of anomalous domain sharing events. Requires two queries.
+
+**Query 1 — Get bot-like account DIDs:**
+```sql
+SELECT DISTINCT user_id
+FROM default.account_entropy_results
+WHERE is_bot_like = 1
+  AND run_timestamp > now() - interval 1 day
+LIMIT 500
+```
+
+**Query 2 — Check anomalous domains for those DIDs:**
+```sql
+SELECT
+  domain,
+  total_shares,
+  unique_sharers,
+  volume_p_value,
+  sample_dids
+FROM default.url_overdispersion_results
+WHERE is_anomaly = 1
+  AND run_timestamp > now() - interval 1 day
+  AND hasAny(sample_dids, ['did:plc:xxx...', 'did:plc:yyy...'])
+LIMIT 50
+```
+
+**Notes:** Replace the DID array with results from Query 1. This cross-reference identifies bot networks participating in coordinated sharing campaigns — a high-confidence coordination signal.
+
+---
+
 ## Notes on Query Adaptation
 
 These queries are templates. Adapt them by:

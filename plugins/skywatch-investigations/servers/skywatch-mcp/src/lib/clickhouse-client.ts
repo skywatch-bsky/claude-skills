@@ -95,37 +95,55 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
     },
 
     async getSchema(): Promise<QueryResult> {
-      const response = await client.query({
-        query: "DESCRIBE TABLE default.osprey_execution_results",
-        format: "JSON",
-      });
+      const tables = [
+        "default.osprey_execution_results",
+        "default.pds_signup_anomalies",
+        "default.url_overdispersion_results",
+        "default.account_entropy_results",
+      ];
 
-      const text = await response.text();
-      const parsed = JSON.parse(text) as unknown;
+      const allRows: Array<Record<string, unknown>> = [];
+      let schemaColumns: Array<{ name: string; type: string }> = [];
 
-      let rows: Array<Record<string, unknown>> = [];
+      for (const table of tables) {
+        try {
+          const response = await client.query({
+            query: `DESCRIBE TABLE ${table}`,
+            format: "JSON",
+          });
 
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        const obj = parsed as Record<string, unknown>;
-        if (Array.isArray(obj["data"])) {
-          rows = obj["data"] as Array<Record<string, unknown>>;
+          const text = await response.text();
+          const parsed = JSON.parse(text) as unknown;
+
+          if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+            const obj = parsed as Record<string, unknown>;
+            if (Array.isArray(obj["data"])) {
+              const tableRows = (obj["data"] as Array<Record<string, unknown>>).map(
+                (row) => ({ ...row, table })
+              );
+              allRows.push(...tableRows);
+            }
+            if (schemaColumns.length === 0 && Array.isArray(obj["meta"])) {
+              schemaColumns = (obj["meta"] as unknown[]).map((col: unknown) => {
+                if (typeof col === "object" && col !== null && "name" in col && "type" in col) {
+                  return {
+                    name: String((col as Record<string, unknown>)["name"]),
+                    type: String((col as Record<string, unknown>)["type"]),
+                  };
+                }
+                return { name: "", type: "" };
+              });
+              schemaColumns.push({ name: "table", type: "String" });
+            }
+          }
+        } catch {
+          // Table may not exist in this environment — skip
         }
       }
 
-      const schemaColumns = rows.map((row: unknown) => {
-        if (typeof row === "object" && row !== null) {
-          const r = row as Record<string, unknown>;
-          return {
-            name: String(r["name"] || ""),
-            type: String(r["type"] || ""),
-          };
-        }
-        return { name: "", type: "" };
-      });
-
       return {
         columns: schemaColumns,
-        rows,
+        rows: allRows,
       };
     },
   };

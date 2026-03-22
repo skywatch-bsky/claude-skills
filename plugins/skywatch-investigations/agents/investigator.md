@@ -52,10 +52,12 @@ You have direct access to these MCP tools. Use them when you need infrastructure
 - `url_expand` — Follow redirect chains, identify final destination
 - `whois_lookup` — Domain registration details, registrant information
 - `content_similarity` — Find posts or accounts with similar content patterns
-- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action)
+- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). Accepts an optional `batchId` (UUID) to group related label operations.
 
 ### Analysis & Labelling
 Use your investigation findings to support any labelling decisions. Never apply labels without evidence from the investigation.
+
+**Batch labelling:** When applying labels to multiple accounts as part of the same investigation action, generate a single UUID (e.g., via `crypto.randomUUID()` in a Bash call) and pass it as `batchId` to every `ozone_label` call in the batch. This links the operations for audit trail purposes. Different investigation actions (e.g., applying labels vs. removing labels, or separate rounds of labelling) should use different batch IDs.
 
 ## Workflow
 

@@ -27,8 +27,59 @@ Osprey Rule Engine (runs continuously)
     ├─ Records: Execution results in ClickHouse
     └─ Outputs: osprey_execution_results table
         ↓
+    ┌───────────────────────────────────┐
+    │ Statistical Sidecars              │
+    │ (read osprey_execution_results,   │
+    │  write to their own tables)       │
+    ├─ account_entropy → account_entropy_results
+    ├─ url_overdispersion → url_overdispersion_results
+    └─ signup_anomaly → pds_signup_anomalies
+        ↓
 Investigation / Analysis / Labelling Decisions
 ```
+
+## Statistical Sidecars
+
+Three sidecar services run alongside Osprey, reading from `osprey_execution_results` and producing scored output in their own ClickHouse tables. They flag — they don't label or take action. Their output feeds into investigations as starting points.
+
+### Account Entropy Sidecar
+
+**Table:** `account_entropy_results`
+**Purpose:** Detect automated/bot-like posting patterns using temporal distribution analysis.
+
+Computes Shannon entropy over two dimensions:
+- **Hourly entropy** — how uniformly an account posts across 24 hours. High entropy (≥ 3.9) = posts around the clock = bot signature.
+- **Inter-post interval entropy** — how regular the gaps between posts are. Low entropy (≤ 1.5) = mechanical spacing = bot signature.
+
+The `is_bot_like` flag fires only when BOTH signals independently cross their thresholds (conjunction logic). This substantially reduces false positives — a shift worker or insomniac trips hourly entropy alone, a live-tweeter trips interval entropy alone, but only automation trips both.
+
+Key columns: `user_id` (DID), `hourly_entropy`, `interval_entropy`, `is_bot_like`, `hourly_flag`, `interval_flag`, `mean_interval_seconds`, `stddev_interval_seconds`, `sample_rkeys`.
+
+Runs every hour, analyses 7-day windows, requires ≥ 10 posts.
+
+### URL Overdispersion Sidecar
+
+**Table:** `url_overdispersion_results`
+**Purpose:** Detect coordinated domain sharing campaigns using statistical anomaly detection.
+
+Computes two independent signals per domain per time bucket:
+- **Volume anomaly** (Poisson model) — is the observed share count statistically unlikely given the domain's baseline rate?
+- **Sharer density anomaly** (normal approximation) — is the ratio of unique sharers to total shares unusually high? (Many accounts each sharing once = coordination.)
+
+Either signal alone can flag a domain as anomalous (`is_anomaly = 1`). Uses entity baselines (domain's own history over 14 days) when available, falling back to population median for new/rare domains. Produces results at both hourly and daily granularity.
+
+Key columns: `domain`, `granularity`, `total_shares`, `unique_sharers`, `sharer_density`, `volume_p_value`, `density_p_value`, `is_anomaly`, `baseline_source`, `sample_dids`, `sample_urls`, `on_watchlist`.
+
+Runs every 15 minutes, requires ≥ 3 unique sharers.
+
+### PDS Signup Anomaly Sidecar
+
+**Table:** `pds_signup_anomalies`
+**Purpose:** Detect unusual PDS signup patterns by host using Poisson models.
+
+Monitors signup rates per PDS host at daily and hourly granularity. Flags when observed signup count is statistically unlikely given the baseline rate. Excludes known high-volume hosts (bsky.network, bridgy-fed, mostr.pub).
+
+Key columns: `pds_host`, `granularity`, `observed_count`, `expected_lambda`, `p_value`, `is_anomaly`, `baseline_source`, `sample_dids`.
 
 ### How It Works
 
@@ -59,18 +110,21 @@ Connect via SSH to a remote host running Docker, then query ClickHouse inside th
 
 Both modes use the same query interface and return identical results.
 
-### Table to Query
+### Queryable Tables
 
-All investigation queries target the single table:
+Four tables are available for investigation queries:
 
-```
-default.osprey_execution_results
-```
+| Table | Source | Purpose |
+|-------|--------|---------|
+| `default.osprey_execution_results` | Osprey rule engine | Rule execution history |
+| `default.pds_signup_anomalies` | Signup anomaly sidecar | PDS signup rate anomalies |
+| `default.url_overdispersion_results` | URL overdispersion sidecar | Coordinated domain sharing anomalies |
+| `default.account_entropy_results` | Account entropy sidecar | Bot-like posting pattern detection |
 
-This is a read-only table. The MCP server enforces:
+All tables are read-only. The MCP server enforces:
 - **SELECT only** — No INSERT, UPDATE, DELETE
 - **LIMIT required** — All queries must have a LIMIT clause
-- **Table restriction** — Only `osprey_execution_results` may be queried
+- **Table restriction** — Only the four tables listed above may be queried
 - **Timeout** — Queries that run longer than 60 seconds are cancelled
 
 These constraints are enforced at the MCP layer before queries reach ClickHouse.
@@ -164,7 +218,7 @@ GROUP BY rule_name
 LIMIT 100
 ```
 
-For 15+ proven query patterns, see the `querying-clickhouse` skill.
+For 25 proven query patterns, see the `querying-clickhouse` skill.
 
 ## Performance Tips
 
