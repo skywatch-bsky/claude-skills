@@ -81,12 +81,18 @@ export function validateQuery(sql: string): ValidationResult {
     "DEFAULT.URL_OVERDISPERSION_RESULTS",
     "ACCOUNT_ENTROPY_RESULTS",
     "DEFAULT.ACCOUNT_ENTROPY_RESULTS",
+    "URL_COSHARING_PAIRS",
+    "DEFAULT.URL_COSHARING_PAIRS",
+    "URL_COSHARING_CLUSTERS",
+    "DEFAULT.URL_COSHARING_CLUSTERS",
+    "URL_COSHARING_MEMBERSHIP",
+    "DEFAULT.URL_COSHARING_MEMBERSHIP",
   ];
 
   if (!validTables.includes(tableRef)) {
     return {
       valid: false,
-      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results), but targets '${tableRef}'`,
+      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership), but targets '${tableRef}'`,
     };
   }
 

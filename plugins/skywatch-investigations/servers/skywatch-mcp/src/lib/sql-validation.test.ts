@@ -199,6 +199,55 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
+
+    it("should accept queries targeting url_cosharing_pairs", () => {
+      const result = validateQuery(
+        "SELECT * FROM url_cosharing_pairs LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.url_cosharing_pairs", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.url_cosharing_pairs LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting url_cosharing_clusters", () => {
+      const result = validateQuery(
+        "SELECT * FROM url_cosharing_clusters LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.url_cosharing_clusters", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.url_cosharing_clusters LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting url_cosharing_membership", () => {
+      const result = validateQuery(
+        "SELECT * FROM url_cosharing_membership LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries targeting default.url_cosharing_membership", () => {
+      const result = validateQuery(
+        "SELECT * FROM default.url_cosharing_membership LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept case-insensitive url_cosharing_clusters", () => {
+      const result = validateQuery(
+        "SELECT * FROM URL_COSHARING_CLUSTERS LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe("Case-insensitive handling", () => {

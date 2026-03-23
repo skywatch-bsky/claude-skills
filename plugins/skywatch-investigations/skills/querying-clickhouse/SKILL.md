@@ -35,8 +35,13 @@ Only the following tables may be queried:
 - `default.pds_signup_anomalies` — PDS signup rate anomalies
 - `default.url_overdispersion_results` — Coordinated domain sharing anomalies
 - `default.account_entropy_results` — Bot-like posting pattern detection
+- `default.url_cosharing_pairs` — Daily account co-sharing pairs (TTL 7 days)
+- `default.url_cosharing_clusters` — Cluster-level metrics and evolution (no TTL)
+- `default.url_cosharing_membership` — Daily cluster membership snapshots (TTL 7 days)
 
 Joins, subqueries targeting other tables, and cross-database queries are blocked.
+
+**Note:** For co-sharing queries that require JOINs across tables (e.g., membership → clusters), use the dedicated `cosharing_clusters`, `cosharing_pairs`, and `cosharing_evolution` MCP tools instead of `clickhouse_query`.
 
 ```sql
 -- Good
@@ -239,6 +244,26 @@ See `references/common-queries.md` for patterns:
 - Anomalous domain sharing
 - Domain sharing history/trends
 - Cross-referencing bot accounts with anomalous domains
+
+### URL Co-Sharing Queries
+
+Query co-sharing data to identify coordinated URL sharing networks. Three tables available, with dedicated MCP tools for common patterns.
+
+**Preferred approach:** Use the dedicated MCP tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) which handle JOINs internally. Use `clickhouse_query` only for ad-hoc single-table queries against co-sharing data.
+
+See `references/common-queries.md` for patterns:
+- Find clusters containing a DID (via tool)
+- List today's largest clusters (via tool or direct query)
+- Get co-sharing pairs for a DID (via tool)
+- Track cluster evolution (via tool)
+- Find clusters sharing a specific URL (direct query)
+
+**Key considerations:**
+- `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that return no results
+- `url_cosharing_clusters` has no TTL — historical cluster data is retained indefinitely
+- Pairs are stored with `account_a < account_b` — query both columns when looking up a DID
+- Tight `temporal_spread_hours` + regular `mean_posting_interval_seconds` = strong coordination signal
+- Low `unique_urls` / `member_count` ratio = likely coordinated content
 
 ## Column Quick Reference
 

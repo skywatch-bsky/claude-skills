@@ -11,6 +11,7 @@ import { registerUrlTool } from "./tools/url.ts";
 import { registerWhoisTool } from "./tools/whois.ts";
 import { registerContentTool } from "./tools/content.ts";
 import { registerOzoneTool, type OzoneConfig } from "./tools/ozone.ts";
+import { registerCosharingTools } from "./tools/cosharing.ts";
 
 function getEnv(key: string, defaultValue: string): string {
   return process.env[key] ?? defaultValue;
@@ -47,6 +48,7 @@ function getClient() {
 
 const lazyClient = {
   query: (sql: string) => getClient().query(sql),
+  queryTrusted: (sql: string) => getClient().queryTrusted(sql),
   getSchema: () => getClient().getSchema(),
 };
 
@@ -62,6 +64,7 @@ await registerIpTool(server);
 await registerUrlTool(server);
 await registerWhoisTool(server);
 await registerContentTool(server, lazyClient);
+await registerCosharingTools(server, lazyClient);
 
 const ozoneConfig: OzoneConfig = {
   serviceUrl: process.env["OZONE_SERVICE_URL"] ?? null,

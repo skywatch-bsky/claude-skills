@@ -14,6 +14,7 @@ export type SshClientConfig = {
 
 type SshClient = {
   query(sql: string): Promise<QueryResult>;
+  queryTrusted(sql: string): Promise<QueryResult>;
   getSchema(): Promise<QueryResult>;
 };
 
@@ -71,12 +72,19 @@ export function createSshClient(config: SshClientConfig): SshClient {
       return executeCommand(validation.normalized);
     },
 
+    async queryTrusted(sql: string): Promise<QueryResult> {
+      return executeCommand(sql);
+    },
+
     async getSchema(): Promise<QueryResult> {
       const tables = [
         "default.osprey_execution_results",
         "default.pds_signup_anomalies",
         "default.url_overdispersion_results",
         "default.account_entropy_results",
+        "default.url_cosharing_pairs",
+        "default.url_cosharing_clusters",
+        "default.url_cosharing_membership",
       ];
 
       let combined: QueryResult = { columns: [], rows: [] };

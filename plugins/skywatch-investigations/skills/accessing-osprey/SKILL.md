@@ -33,6 +33,7 @@ Osprey Rule Engine (runs continuously)
     │  write to their own tables)       │
     ├─ account_entropy → account_entropy_results
     ├─ url_overdispersion → url_overdispersion_results
+    ├─ url_cosharing → url_cosharing_pairs, _clusters, _membership
     └─ signup_anomaly → pds_signup_anomalies
         ↓
 Investigation / Analysis / Labelling Decisions
@@ -71,6 +72,23 @@ Either signal alone can flag a domain as anomalous (`is_anomaly = 1`). Uses enti
 Key columns: `domain`, `granularity`, `total_shares`, `unique_sharers`, `sharer_density`, `volume_p_value`, `density_p_value`, `is_anomaly`, `baseline_source`, `sample_dids`, `sample_urls`, `on_watchlist`.
 
 Runs every 15 minutes, requires ≥ 3 unique sharers.
+
+### URL Co-Sharing Sidecar
+
+**Tables:** `url_cosharing_pairs`, `url_cosharing_clusters`, `url_cosharing_membership`
+**Purpose:** Detect coordinated inauthentic behaviour by finding clusters of accounts that repeatedly share the same URLs on the same day.
+
+Builds a weighted graph (nodes = accounts, edge weight = number of co-shared URLs), runs Leiden community detection, and tracks how clusters evolve day-to-day. Three outputs:
+
+- **Pairs** (`url_cosharing_pairs`) — daily account pairs with co-shared URLs. TTL 7 days.
+- **Clusters** (`url_cosharing_clusters`) — cluster-level metrics, evolution classification, sample members/URLs. No TTL.
+- **Membership** (`url_cosharing_membership`) — daily membership snapshots. TTL 7 days.
+
+Key columns: `cluster_id` (stable ID), `member_count`, `evolution_type` (birth/death/continuation/merge/split), `temporal_spread_hours`, `mean_posting_interval_seconds`, `sample_dids`, `sample_urls`.
+
+Runs daily. Minimum 3 accounts per cluster, minimum 2 co-shares per edge, minimum 3 accounts sharing a URL before it qualifies.
+
+**Dedicated MCP tools:** Use `cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution` for structured access (these support JOINs across the three tables internally). Use `clickhouse_query` for ad-hoc single-table queries.
 
 ### PDS Signup Anomaly Sidecar
 
@@ -112,7 +130,7 @@ Both modes use the same query interface and return identical results.
 
 ### Queryable Tables
 
-Four tables are available for investigation queries:
+Seven tables are available for investigation queries:
 
 | Table | Source | Purpose |
 |-------|--------|---------|
@@ -120,12 +138,16 @@ Four tables are available for investigation queries:
 | `default.pds_signup_anomalies` | Signup anomaly sidecar | PDS signup rate anomalies |
 | `default.url_overdispersion_results` | URL overdispersion sidecar | Coordinated domain sharing anomalies |
 | `default.account_entropy_results` | Account entropy sidecar | Bot-like posting pattern detection |
+| `default.url_cosharing_pairs` | URL co-sharing sidecar | Daily account co-sharing pairs (TTL 7 days) |
+| `default.url_cosharing_clusters` | URL co-sharing sidecar | Cluster-level metrics and evolution (no TTL) |
+| `default.url_cosharing_membership` | URL co-sharing sidecar | Daily cluster membership snapshots (TTL 7 days) |
 
 All tables are read-only. The MCP server enforces:
 - **SELECT only** — No INSERT, UPDATE, DELETE
 - **LIMIT required** — All queries must have a LIMIT clause
-- **Table restriction** — Only the four tables listed above may be queried
+- **Table restriction** — Only the seven tables listed above may be queried
 - **Timeout** — Queries that run longer than 60 seconds are cancelled
+- **No JOINs** — via `clickhouse_query`. Use `cosharing_clusters`/`cosharing_pairs`/`cosharing_evolution` tools for queries that need to join co-sharing tables
 
 These constraints are enforced at the MCP layer before queries reach ClickHouse.
 

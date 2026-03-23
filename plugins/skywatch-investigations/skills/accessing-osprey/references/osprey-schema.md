@@ -212,3 +212,115 @@ The `account_entropy_results` table stores output from the account entropy sidec
 | `interval_entropy` | 2.0–2.8 bits (varied gaps) | ≤ 1.5 bits (regular gaps) |
 
 The conjunction requirement (`is_bot_like` = both flags) substantially reduces false positives. Individual flags are useful for softer screening.
+
+---
+
+# url_cosharing_pairs Schema
+
+Daily account pairs that co-shared URLs. Populated by a ClickHouse scheduled materialized view. TTL 7 days.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | Date | Calendar day |
+| `account_a` | String | DID (lexicographically smaller of the pair) |
+| `account_b` | String | DID (lexicographically larger of the pair) |
+| `weight` | UInt32 | Count of URLs this pair co-shared on this date |
+| `shared_urls` | Array(String) | The actual URLs they co-shared |
+
+## Ordering Key
+
+`(date, account_a, account_b)` — filter by date for performance.
+
+## Key Detail
+
+Pairs are always stored with `account_a < account_b` (enforced by the materialized view). When querying for a specific DID, you must check both `account_a` and `account_b`.
+
+## Common Filters
+
+- `date = yesterday()` — yesterday's co-sharing activity
+- `weight >= 3` — pairs sharing 3+ URLs (stronger signal)
+
+## TTL
+
+7 days. Queries beyond that window return no results. Use `cosharing_pairs` MCP tool for convenient access.
+
+---
+
+# url_cosharing_clusters Schema
+
+Cluster-level results with metrics and evolution classification. Populated by the URL co-sharing Python sidecar. No TTL — retained indefinitely.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_date` | Date | Date the clustering ran |
+| `cluster_id` | String | Stable ID in `YYYY-MM-DD-NNNN` format (date = birth date) |
+| `member_count` | UInt32 | Number of accounts in the cluster |
+| `total_edges` | UInt32 | Number of co-sharing edges within the cluster |
+| `total_weight` | UInt32 | Sum of edge weights (total co-shared URL instances) |
+| `unique_urls` | UInt32 | Count of distinct URLs shared within the cluster |
+| `temporal_spread_hours` | Float64 | Hours between earliest and latest post by any cluster member that day |
+| `mean_posting_interval_seconds` | Float64 | Average seconds between consecutive posts across all cluster members |
+| `sample_dids` | Array(String) | First 10 member DIDs (for quick inspection) |
+| `sample_urls` | Array(String) | First 10 URLs shared by the cluster |
+| `resolution_parameter` | Float64 | CPM resolution used for this clustering run |
+| `evolution_type` | Enum8 | One of: `birth`, `death`, `continuation`, `merge`, `split` |
+| `predecessor_cluster_ids` | Array(String) | IDs of previous clusters this evolved from |
+| `jaccard_score` | Float64 | Jaccard similarity to best-matching predecessor |
+
+## Ordering Key
+
+`(run_date, cluster_id)` — filter by run_date for performance.
+
+## Evolution Types
+
+| Type | Meaning | `predecessor_cluster_ids` | `jaccard_score` |
+|------|---------|---------------------------|-----------------|
+| `birth` | No previous cluster matches above threshold | Empty | 0.0 |
+| `continuation` | Matches exactly one previous cluster (inherits its ID) | The predecessor ID | Jaccard with predecessor |
+| `merge` | Matches multiple previous clusters | All matching predecessor IDs | Best Jaccard |
+| `split` | Matches one previous cluster that maps to multiple current clusters | The single predecessor ID | Jaccard with predecessor |
+| `death` | Previous cluster with no current match | Self | 0.0 |
+
+## Interpreting Coordination Signals
+
+- **Tight temporal spread** (`temporal_spread_hours` < 4) + **regular intervals** (`mean_posting_interval_seconds` < 300) = strong coordination signal
+- **Low content diversity** (`unique_urls` / `member_count` < 2) = likely coordinated
+- **`merge` and `split` events** indicate network restructuring — worth investigating
+
+## Common Filters
+
+- `run_date = yesterday()` — yesterday's clusters
+- `member_count >= 5` — non-trivial clusters
+- `evolution_type = 'birth'` — newly formed clusters
+- `evolution_type IN ('merge', 'split')` — clusters undergoing restructuring
+
+---
+
+# url_cosharing_membership Schema
+
+Daily membership snapshots — which DIDs belong to which cluster on which day. TTL 7 days.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_date` | Date | Date of the snapshot |
+| `cluster_id` | String | Cluster ID |
+| `did` | String | Account DID |
+
+## Ordering Key
+
+`(run_date, cluster_id, did)` — filter by run_date for performance.
+
+## Common Filters
+
+- `did = '{target_did}'` — find clusters a specific account belongs to
+- `cluster_id = '{id}'` — list all members of a specific cluster
+
+## TTL
+
+7 days. For cluster-level data beyond 7 days, use `url_cosharing_clusters` (no TTL). Use `cosharing_clusters` MCP tool for convenient membership-to-cluster lookups.

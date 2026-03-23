@@ -674,6 +674,114 @@ LIMIT 50
 
 ---
 
+## 26. Find Today's Largest Co-Sharing Clusters
+
+**Purpose:** Overview of current URL co-sharing clusters ranked by size. Identifies the largest coordinated URL sharing groups.
+
+**Preferred:** Use `cosharing_clusters` MCP tool with no params (defaults to yesterday, sorted by size).
+
+**Direct SQL (single-table, no JOINs):**
+```sql
+SELECT cluster_id, member_count, total_weight, unique_urls,
+       temporal_spread_hours, mean_posting_interval_seconds,
+       evolution_type, sample_dids, sample_urls
+FROM default.url_cosharing_clusters
+WHERE run_date = yesterday()
+ORDER BY member_count DESC
+LIMIT 20
+```
+
+**Output:** Clusters ranked by member count. `temporal_spread_hours` and `mean_posting_interval_seconds` together indicate coordination tightness. Low `unique_urls` relative to `member_count` suggests content coordination.
+
+---
+
+## 27. Co-Sharing Pairs for a Specific DID
+
+**Purpose:** Find which accounts co-share URLs with a target account on a given day.
+
+**Preferred:** Use `cosharing_pairs` MCP tool with `did` parameter.
+
+**Direct SQL:**
+```sql
+SELECT date, account_a, account_b, weight, shared_urls
+FROM default.url_cosharing_pairs
+WHERE (account_a = 'did:plc:xxx...' OR account_b = 'did:plc:xxx...')
+  AND date = yesterday()
+ORDER BY weight DESC
+LIMIT 50
+```
+
+**Output:** Paired accounts ranked by co-share count. `shared_urls` shows the actual URLs they both shared.
+
+**Notes:** Pairs are stored with `account_a < account_b`. Must check both columns. TTL 7 days.
+
+---
+
+## 28. Track Cluster Evolution Over Time
+
+**Purpose:** Trace a cluster's history — births, continuations, merges, splits, and deaths across days.
+
+**Preferred:** Use `cosharing_evolution` MCP tool with `cluster_id` parameter.
+
+**Direct SQL (single-table):**
+```sql
+SELECT run_date, cluster_id, member_count, evolution_type,
+       predecessor_cluster_ids, jaccard_score
+FROM default.url_cosharing_clusters
+WHERE cluster_id = '2026-03-20-0001'
+   OR has(predecessor_cluster_ids, '2026-03-20-0001')
+ORDER BY run_date
+LIMIT 30
+```
+
+**Output:** Timeline of evolution events. `merge` and `split` events indicate network restructuring. `jaccard_score` shows membership overlap with predecessor.
+
+---
+
+## 29. Find Clusters Sharing a Specific URL
+
+**Purpose:** Identify which co-sharing clusters are pushing a particular URL.
+
+**Direct SQL (single-table, uses sample_urls):**
+```sql
+SELECT DISTINCT run_date, cluster_id, member_count, evolution_type
+FROM default.url_cosharing_clusters
+WHERE run_date >= today() - 7
+  AND hasAny(sample_urls, ['https://example.com/target'])
+ORDER BY run_date DESC
+LIMIT 20
+```
+
+**Notes:** `sample_urls` only contains the first 10 URLs per cluster. For exhaustive URL search, query `url_cosharing_pairs` for the URL and cross-reference with membership. Use `cosharing_clusters` MCP tool with `did` parameter after identifying accounts from pairs.
+
+---
+
+## 30. Cross-Reference: Bot Accounts in Co-Sharing Clusters
+
+**Purpose:** Find accounts flagged as bot-like (entropy) that also appear in co-sharing clusters. Requires two queries.
+
+**Query 1 — Get bot-like account DIDs:**
+```sql
+SELECT DISTINCT user_id
+FROM default.account_entropy_results
+WHERE is_bot_like = 1
+  AND run_timestamp > now() - interval 1 day
+LIMIT 500
+```
+
+**Query 2 — Check cluster membership for those DIDs:**
+```sql
+SELECT did, cluster_id, run_date
+FROM default.url_cosharing_membership
+WHERE did IN ('did:plc:xxx...', 'did:plc:yyy...')
+  AND run_date = yesterday()
+LIMIT 100
+```
+
+**Notes:** Replace the DID list with results from Query 1. Bot accounts appearing in co-sharing clusters is a very high-confidence coordination signal — automated accounts participating in coordinated URL campaigns.
+
+---
+
 ## Notes on Query Adaptation
 
 These queries are templates. Adapt them by:

@@ -19,11 +19,13 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - Check for domain or URL mentions in the flagged content
 - Check `account_entropy_results` for bot-like flags on target accounts
 - Check `url_overdispersion_results` for anomalous domain sharing involving target accounts
+- Check co-sharing clusters for the target account — is it part of a URL co-sharing network?
 
 **Tool Guidance:**
 - `clickhouse_query` — Extract rule hit history, temporal distribution, rule types triggered
 - `clickhouse_query` on `account_entropy_results` — Check if target accounts are flagged as bot-like
 - `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear in anomalous domain sharing events (via `sample_dids`)
+- `cosharing_clusters` with `did` — Check if target accounts belong to any co-sharing clusters. Cluster membership is an early coordination signal.
 - `domain_check` — Verify any domains mentioned in problematic content
 
 **Signals to Document:**
@@ -33,6 +35,7 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - Content red flags — domains, repeated phrases, suspicious URLs
 - Account entropy flags — is the account flagged as bot-like? What are the entropy values?
 - Domain overdispersion — are any domains shared by this account flagged as anomalous?
+- Co-sharing cluster membership — is the account part of a coordinated URL sharing group? What's the cluster size and evolution type?
 
 **Decision Point:**
 - Does the account show patterns worth deeper investigation?
@@ -82,12 +85,16 @@ Find connected accounts. This phase identifies other accounts exhibiting similar
 - Infrastructure correlation: accounts sharing PDS hosts, domains, or IP patterns
 - Shared bot-like entropy profiles across accounts
 - Shared anomalous domain sharing patterns
+- URL co-sharing cluster membership — accounts in the same cluster are sharing the same URLs on the same days
 
 **Tool Guidance:**
 - `content_similarity` — Find accounts posting the same or similar content (detects copypasta, template reuse)
 - `clickhouse_query` with GROUP BY — Cluster accounts by shared patterns (same URLs, same domains, same posting times)
 - `clickhouse_query` on `account_entropy_results` — Check if multiple target accounts share bot-like flags. A cluster of accounts all flagged `is_bot_like = 1` with similar entropy profiles is a strong coordination signal.
 - `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear together in `sample_dids` for the same anomalous domain. Accounts co-occurring in domain campaigns establishes linkage.
+- `cosharing_clusters` with `did` — Check if target accounts belong to co-sharing clusters. Multiple target accounts in the same cluster is strong evidence of coordination.
+- `cosharing_pairs` with `did` — Drill into raw co-sharing edges to see exactly which URLs are being co-shared and with whom.
+- `cosharing_evolution` with `cluster_id` — If a cluster is found, trace its history to understand when the coordination started and how the network has evolved.
 
 **Signals to Document:**
 - Content overlap (exact matches vs. paraphrased)
@@ -96,6 +103,7 @@ Find connected accounts. This phase identifies other accounts exhibiting similar
 - Account clustering — which accounts form tight groups?
 - Shared automation signature — do linked accounts have similar entropy profiles?
 - Domain campaign co-participation — do accounts share the same anomalous domains?
+- Co-sharing cluster membership — are accounts in the same cluster? How large is the cluster? What URLs are being pushed?
 
 **Decision Point:**
 - Is there evidence of coordination or are these coincidental similarities?
@@ -191,6 +199,9 @@ What constitutes sufficient evidence for different conclusion types:
 - Absence of other explanations (no public copying of same content): increases confidence
 - Multiple accounts flagged `is_bot_like` sharing the same anomalous domain: very strong indicator
 - Accounts with near-identical entropy profiles (similar hourly_entropy and interval_entropy values): moderate indicator
+- Multiple accounts in the same co-sharing cluster: strong indicator (Leiden community detection has already identified them as coordinated)
+- Co-sharing cluster with tight `temporal_spread_hours` and regular `mean_posting_interval_seconds`: very strong indicator
+- Bot-like accounts appearing in co-sharing clusters: very high-confidence coordination signal
 
 **Rule Coverage:**
 - 80%+ of problematic accounts hit at least one rule: adequate coverage

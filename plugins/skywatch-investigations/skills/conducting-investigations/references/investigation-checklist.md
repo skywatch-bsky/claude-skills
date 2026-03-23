@@ -12,6 +12,7 @@ A per-phase checklist to guide execution of the investigation methodology. Use t
 
 **Tool Usage:**
 - [ ] Used `clickhouse_query` to pull rule hits
+- [ ] Used `cosharing_clusters` with `did` to check co-sharing cluster membership
 - [ ] Used `domain_check` on discovered domains (if any)
 
 **Signal Documentation:**
@@ -19,6 +20,7 @@ A per-phase checklist to guide execution of the investigation methodology. Use t
 - [ ] Noted rule frequency distribution (which rules trigger most?)
 - [ ] Identified temporal clustering (spread over time or concentrated?)
 - [ ] Documented content red flags (malicious domains, suspicious URLs)
+- [ ] Checked co-sharing cluster membership (cluster size, evolution type, shared URLs)
 
 **Decision & Next Steps:**
 - [ ] Assessment: Is this pattern worth deeper investigation? (Yes/No)
@@ -71,6 +73,8 @@ A per-phase checklist to guide execution of the investigation methodology. Use t
 - [ ] Used `content_similarity` to find matching content across accounts
 - [ ] Used `clickhouse_query` with GROUP BY to cluster by shared infrastructure
 - [ ] Compared posting timestamps for tight synchronisation patterns
+- [ ] Used `cosharing_clusters` / `cosharing_pairs` to check co-sharing relationships
+- [ ] Used `cosharing_evolution` to trace cluster history (if cluster found)
 
 **Signal Documentation:**
 - [ ] Content overlap matrix: which accounts share content?

@@ -52,6 +52,9 @@ You have direct access to these MCP tools. Use them when you need infrastructure
 - `url_expand` — Follow redirect chains, identify final destination
 - `whois_lookup` — Domain registration details, registrant information
 - `content_similarity` — Find posts or accounts with similar content patterns
+- `cosharing_clusters` — Find URL co-sharing clusters (by DID, cluster_id, date, or min_members). Use directly for quick cluster lookups during discovery/linkage.
+- `cosharing_pairs` — Get raw co-sharing pairs for a DID. Shows which accounts share URLs together and the actual URLs.
+- `cosharing_evolution` — Trace a cluster's history over time. Shows births, merges, splits, and deaths.
 - `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). For account-level labels, pass a DID as subject. For post-level labels, pass an AT-URI as subject along with its `cid` (resolve via `com.atproto.repo.getRecord`). Accepts an optional `batchId` (UUID) to group related label operations.
 
 ### Analysis & Labelling
@@ -65,6 +68,7 @@ Follow the 6-phase methodology from the `conducting-investigations` skill. Not e
 
 **Phase 1: Discovery**
 - Dispatch data-analyst for initial data pull on target accounts
+- Use `cosharing_clusters` with `did` to check if target accounts are in co-sharing clusters
 - Identify rule hits, posting patterns, account age, follower networks
 
 **Phase 2: Characterization**
@@ -75,6 +79,8 @@ Follow the 6-phase methodology from the `conducting-investigations` skill. Not e
 **Phase 3: Linkage**
 - Dispatch data-analyst for correlation queries (shared content, similar posting times, coordinated actions)
 - Use `content_similarity` for copypasta and content reuse detection
+- Use `cosharing_pairs` to examine raw co-sharing edges between accounts
+- Use `cosharing_evolution` to trace cluster history if co-sharing clusters were found
 - Build the connection map between accounts and infrastructure
 
 **Phase 4: Amplification Mapping**

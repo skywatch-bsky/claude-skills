@@ -12,6 +12,7 @@ export type QueryResult = {
 
 export type ClickHouseClient = {
   query(sql: string): Promise<QueryResult>;
+  queryTrusted(sql: string): Promise<QueryResult>;
   getSchema(): Promise<QueryResult>;
 };
 
@@ -94,12 +95,56 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
       return { columns, rows };
     },
 
+    async queryTrusted(sql: string): Promise<QueryResult> {
+      const response = await client.query({
+        query: sql,
+        format: "JSON",
+        clickhouse_settings: {
+          max_execution_time: 120,
+        },
+      });
+
+      const text = await response.text();
+      const parsed = JSON.parse(text) as unknown;
+
+      let columns: Array<{ name: string; type: string }> = [];
+      let rows: Array<Record<string, unknown>> = [];
+
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        const obj = parsed as Record<string, unknown>;
+        if (Array.isArray(obj["meta"])) {
+          columns = (obj["meta"] as unknown[]).map((col: unknown) => {
+            if (
+              typeof col === "object" &&
+              col !== null &&
+              "name" in col &&
+              "type" in col
+            ) {
+              return {
+                name: String((col as Record<string, unknown>)["name"]),
+                type: String((col as Record<string, unknown>)["type"]),
+              };
+            }
+            return { name: "", type: "" };
+          });
+        }
+        if (Array.isArray(obj["data"])) {
+          rows = obj["data"] as Array<Record<string, unknown>>;
+        }
+      }
+
+      return { columns, rows };
+    },
+
     async getSchema(): Promise<QueryResult> {
       const tables = [
         "default.osprey_execution_results",
         "default.pds_signup_anomalies",
         "default.url_overdispersion_results",
         "default.account_entropy_results",
+        "default.url_cosharing_pairs",
+        "default.url_cosharing_clusters",
+        "default.url_cosharing_membership",
       ];
 
       const allRows: Array<Record<string, unknown>> = [];
