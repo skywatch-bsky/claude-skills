@@ -1,10 +1,12 @@
-import { describe, it, expect } from "bun:test";
+import { describe, it, expect, mock, afterEach } from "bun:test";
 import {
   buildOzoneRequest,
   buildSubjectRef,
   validateOzoneConfig,
   buildModTool,
   registerOzoneTools,
+  ozoneRequest,
+  __resetSessionCache,
 } from "./ozone.ts";
 import { createMockServer } from "../test-utils";
 
@@ -443,5 +445,178 @@ describe("buildModTool", () => {
 
     expect(resultTime.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
     expect(resultTime.getTime()).toBeLessThanOrEqual(afterTime.getTime());
+  });
+});
+
+describe("ozoneRequest", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC1.7: should return success with parsed JSON on 200 response", async () => {
+    const originalFetch = globalThis.fetch;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+          { status: 200 }
+        );
+      }
+
+      return new Response(JSON.stringify({ success: true }), { status: 200 });
+    });
+
+    try {
+      const config: any = {
+        pdsHost: "example.com",
+        handle: "admin",
+        adminPassword: "pass",
+        did: "did:plc:example",
+        serviceUrl: null,
+      };
+
+      const result = await ozoneRequest(config, "POST", "test.endpoint", { test: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data).toEqual({ success: true });
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC1.7: should handle expired token and retry with refreshed token", async () => {
+    const originalFetch = globalThis.fetch;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+          { status: 200 }
+        );
+      } else if (callCount === 2) {
+        return new Response('{"error":"ExpiredToken"}', { status: 401 });
+      } else if (callCount === 3) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token2", refreshJwt: "refresh2" }),
+          { status: 200 }
+        );
+      } else if (callCount === 4) {
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+
+      return new Response('{"error":"Unexpected call"}', { status: 500 });
+    });
+
+    try {
+      const config: any = {
+        pdsHost: "example.com",
+        handle: "admin",
+        adminPassword: "pass",
+        did: "did:plc:example",
+        serviceUrl: null,
+      };
+
+      const result = await ozoneRequest(config, "POST", "test.endpoint", { test: true });
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data).toEqual({ success: true });
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC1.7: should return failure when retry also fails", async () => {
+    const originalFetch = globalThis.fetch;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+          { status: 200 }
+        );
+      } else if (callCount === 2) {
+        return new Response('{"error":"ExpiredToken"}', { status: 401 });
+      } else if (callCount === 3) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token2", refreshJwt: "refresh2" }),
+          { status: 200 }
+        );
+      } else if (callCount === 4) {
+        return new Response('{"error":"Still failed"}', { status: 401 });
+      }
+
+      return new Response('{"error":"Unexpected call"}', { status: 500 });
+    });
+
+    try {
+      const config: any = {
+        pdsHost: "example.com",
+        handle: "admin",
+        adminPassword: "pass",
+        did: "did:plc:example",
+        serviceUrl: null,
+      };
+
+      const result = await ozoneRequest(config, "POST", "test.endpoint", { test: true });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.status).toBe(401);
+        expect(result.text).toContain("Still failed");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("should handle non-JSON response gracefully", async () => {
+    const originalFetch = globalThis.fetch;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(async () => {
+      callCount++;
+
+      if (callCount === 1) {
+        return new Response(
+          JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+          { status: 200 }
+        );
+      }
+
+      return new Response("Not valid JSON", { status: 200 });
+    });
+
+    try {
+      const config: any = {
+        pdsHost: "example.com",
+        handle: "admin",
+        adminPassword: "pass",
+        did: "did:plc:example",
+        serviceUrl: null,
+      };
+
+      const result = await ozoneRequest(config, "POST", "test.endpoint", { test: true });
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.text).toContain("Invalid JSON");
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

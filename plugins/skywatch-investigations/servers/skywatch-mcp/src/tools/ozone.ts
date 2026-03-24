@@ -160,6 +160,10 @@ type SessionTokens = {
 
 let cachedSession: SessionTokens | null = null;
 
+export function __resetSessionCache(): void {
+  cachedSession = null;
+}
+
 async function createSession(config: OzoneConfig): Promise<string> {
   const response = await fetch(
     `https://${config.pdsHost}/xrpc/com.atproto.server.createSession`,
