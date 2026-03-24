@@ -9,7 +9,14 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(find:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(git push:*)",
+      "Read(//Users/scarndp/.claude/plugins/cache/skywatch-skills/skywatch-investigations/0.2.0/**)",
+      "Read(//Users/scarndp/.claude/plugins/cache/skywatch-skills/skywatch-investigations/0.1.0/**)",
+      "Bash(bun install:*)",
+      "Bash(timeout 5 bun run src/index.ts)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -m json.tool /Users/scarndp/.claude/settings.json)"
     ]
   }
 }

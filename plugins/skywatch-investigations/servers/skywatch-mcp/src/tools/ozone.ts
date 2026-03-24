@@ -34,11 +34,11 @@ export type OzoneConfig = {
   readonly pdsHost: string | null;
 };
 
-type SubjectRef =
+export type SubjectRef =
   | { $type: "com.atproto.admin.defs#repoRef"; did: string }
   | { $type: "com.atproto.repo.strongRef"; uri: string; cid: string };
 
-type ModTool = {
+export type ModTool = {
   readonly name: string;
   readonly meta: {
     readonly time: string;
@@ -59,6 +59,110 @@ type OzoneEventRequest = {
   readonly modTool: ModTool;
 };
 
+export const REVIEW_STATE_MAP: Record<"open" | "escalated" | "closed" | "none", string> = {
+  open: "tools.ozone.moderation.defs#reviewOpen",
+  escalated: "tools.ozone.moderation.defs#reviewEscalated",
+  closed: "tools.ozone.moderation.defs#reviewClosed",
+  none: "tools.ozone.moderation.defs#reviewNone",
+};
+
+export const EVENT_TYPE_MAP: Record<"takedown" | "reverseTakedown" | "comment" | "report" | "label" | "acknowledge" | "escalate" | "mute" | "unmute" | "muteReporter" | "unmuteReporter" | "email" | "resolveAppeal" | "divert" | "tag" | "accountEvent" | "identityEvent" | "recordEvent", string> = {
+  takedown: "tools.ozone.moderation.defs#modEventTakedown",
+  reverseTakedown: "tools.ozone.moderation.defs#modEventReverseTakedown",
+  comment: "tools.ozone.moderation.defs#modEventComment",
+  report: "tools.ozone.moderation.defs#modEventReport",
+  label: "tools.ozone.moderation.defs#modEventLabel",
+  acknowledge: "tools.ozone.moderation.defs#modEventAcknowledge",
+  escalate: "tools.ozone.moderation.defs#modEventEscalate",
+  mute: "tools.ozone.moderation.defs#modEventMute",
+  unmute: "tools.ozone.moderation.defs#modEventUnmute",
+  muteReporter: "tools.ozone.moderation.defs#modEventMuteReporter",
+  unmuteReporter: "tools.ozone.moderation.defs#modEventUnmuteReporter",
+  email: "tools.ozone.moderation.defs#modEventEmail",
+  resolveAppeal: "tools.ozone.moderation.defs#modEventResolveAppeal",
+  divert: "tools.ozone.moderation.defs#modEventDivert",
+  tag: "tools.ozone.moderation.defs#modEventTag",
+  accountEvent: "tools.ozone.moderation.defs#accountEvent",
+  identityEvent: "tools.ozone.moderation.defs#identityEvent",
+  recordEvent: "tools.ozone.moderation.defs#recordEvent",
+};
+
+export function buildQueryString(
+  params: Record<string, string | ReadonlyArray<string> | undefined>,
+): string {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        searchParams.append(key, item);
+      }
+    } else {
+      searchParams.set(key, value);
+    }
+  }
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function validateOzoneConfig(
+  config: OzoneConfig,
+): { isError: true; content: Array<{ type: "text"; text: string }> } | null {
+  if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Ozone is not configured. Set OZONE_HANDLE, OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
+        },
+      ],
+    };
+  }
+  return null;
+}
+
+export function buildSubjectRef(
+  subject: string,
+  cid?: string,
+): { ok: true; ref: SubjectRef } | { ok: false; error: string } {
+  if (subject.startsWith("did:")) {
+    return {
+      ok: true,
+      ref: { $type: "com.atproto.admin.defs#repoRef", did: subject },
+    };
+  }
+  if (subject.startsWith("at://")) {
+    if (!cid) {
+      return {
+        ok: false,
+        error:
+          "AT-URI subjects require a cid parameter. Use com.atproto.repo.getRecord to resolve the CID for the record.",
+      };
+    }
+    return {
+      ok: true,
+      ref: { $type: "com.atproto.repo.strongRef", uri: subject, cid },
+    };
+  }
+  return {
+    ok: false,
+    error:
+      'Subject must be a DID (did:plc:...) or AT-URI (at://...). Got: ' +
+      subject,
+  };
+}
+
+export function buildModTool(batchId?: string): ModTool {
+  return {
+    name: "skywatch-mcp",
+    meta: {
+      time: new Date().toISOString(),
+      batchId: batchId ?? uuidv7(),
+    },
+  };
+}
+
 export function buildOzoneRequest(
   subject: string,
   label: string,
@@ -68,6 +172,11 @@ export function buildOzoneRequest(
   batchId?: string,
   cid?: string
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
+  const subjectRefResult = buildSubjectRef(subject, cid);
+  if (!subjectRefResult.ok) {
+    return { ok: false, error: subjectRefResult.error };
+  }
+
   const event = {
     $type: "tools.ozone.moderation.defs#modEventLabel" as const,
     ...(comment ? { comment } : {}),
@@ -76,57 +185,18 @@ export function buildOzoneRequest(
   };
 
   const now = new Date().toISOString();
-  const modTool: ModTool = {
-    name: "skywatch-mcp",
-    meta: {
-      time: now,
-      batchId: batchId ?? uuidv7(),
+  const modTool = buildModTool(batchId);
+
+  return {
+    ok: true,
+    request: {
+      event,
+      subject: subjectRefResult.ref,
+      createdBy,
+      createdAt: now,
+      modTool,
     },
   };
-
-  if (subject.startsWith("did:")) {
-    return {
-      ok: true,
-      request: {
-        event,
-        subject: {
-          $type: "com.atproto.admin.defs#repoRef",
-          did: subject,
-        },
-        createdBy,
-        createdAt: now,
-        modTool,
-      },
-    };
-  } else if (subject.startsWith("at://")) {
-    if (!cid) {
-      return {
-        ok: false,
-        error: "AT-URI subjects require a cid parameter. Use com.atproto.repo.getRecord to resolve the CID for the record.",
-      };
-    }
-    return {
-      ok: true,
-      request: {
-        event,
-        subject: {
-          $type: "com.atproto.repo.strongRef",
-          uri: subject,
-          cid,
-        },
-        createdBy,
-        createdAt: now,
-        modTool,
-      },
-    };
-  } else {
-    return {
-      ok: false,
-      error:
-        'Subject must be a DID (did:plc:...) or AT-URI (at://...). Got: ' +
-        subject,
-    };
-  }
 }
 
 type SessionTokens = {
@@ -135,6 +205,13 @@ type SessionTokens = {
 };
 
 let cachedSession: SessionTokens | null = null;
+
+// Exported for test isolation: Bun's module-level state persists across test runs,
+// so this function allows test cleanup of the session cache between test cases.
+// Not part of the public API surface beyond testing.
+export function __resetSessionCache(): void {
+  cachedSession = null;
+}
 
 async function createSession(config: OzoneConfig): Promise<string> {
   const response = await fetch(
@@ -191,7 +268,116 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
   return createSession(config);
 }
 
-export async function registerOzoneTool(
+type EmitEventOptions = {
+  readonly config: OzoneConfig;
+  readonly subject: string;
+  readonly cid?: string;
+  readonly comment?: string;
+  readonly batchId?: string;
+  readonly event: Record<string, unknown>;
+};
+
+async function emitOzoneEvent(
+  options: EmitEventOptions,
+): Promise<{ isError?: true; content: Array<{ type: string; text: string }> }> {
+  try {
+    const configError = validateOzoneConfig(options.config);
+    if (configError) return configError;
+
+    const subjectResult = buildSubjectRef(options.subject, options.cid);
+    if (!subjectResult.ok) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: subjectResult.error }],
+      };
+    }
+
+    const body = {
+      event: {
+        ...options.event,
+        ...(options.comment ? { comment: options.comment } : {}),
+      },
+      subject: subjectResult.ref,
+      createdBy: options.config.did,
+      createdAt: new Date().toISOString(),
+      modTool: buildModTool(options.batchId),
+    };
+
+    const result = await ozoneRequest(
+      options.config,
+      "POST",
+      "tools.ozone.moderation.emitEvent",
+      body,
+    );
+
+    if (!result.ok) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Ozone API error (${result.status}): ${result.text}` }],
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result.data, null, 2) }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      isError: true,
+      content: [{ type: "text", text: errorMessage }],
+    };
+  }
+}
+
+export async function ozoneRequest(
+  config: OzoneConfig,
+  method: "GET" | "POST",
+  path: string,
+  body?: unknown,
+): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> {
+  const makeRequest = async (jwt: string): Promise<Response> =>
+    fetch(`https://${config.pdsHost}/xrpc/${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${jwt}`,
+        "atproto-proxy": `${config.did}#atproto_labeler`,
+        "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+
+  let accessJwt = await getAccessToken(config);
+  let response = await makeRequest(accessJwt);
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    const isExpired = responseBody.includes("ExpiredToken");
+
+    if (isExpired) {
+      accessJwt = await refreshSession(config);
+      response = await makeRequest(accessJwt);
+    }
+
+    if (!response.ok) {
+      const retryBody = isExpired ? await response.text() : responseBody;
+      return { ok: false, status: response.status, text: retryBody };
+    }
+  }
+
+  const responseText = await response.text();
+  try {
+    return { ok: true, data: responseText ? JSON.parse(responseText) : null };
+  } catch {
+    return {
+      ok: false,
+      status: response.status,
+      text: `Invalid JSON response: ${responseText.slice(0, 200)}`,
+    };
+  }
+}
+
+export async function registerOzoneTools(
   server: McpServer,
   config: OzoneConfig
 ): Promise<void> {
@@ -222,16 +408,9 @@ export async function registerOzoneTool(
     },
     async (args) => {
       try {
-        if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "Ozone is not configured. Set OZONE_HANDLE, OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
-              },
-            ],
-          };
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
         }
 
         const { subject, label, action, comment, cid, batchId } = args;
@@ -251,55 +430,26 @@ export async function registerOzoneTool(
 
         const request = result.request;
 
-        const emitEvent = async (jwt: string) =>
-          fetch(
-            `https://${config.pdsHost}/xrpc/tools.ozone.moderation.emitEvent`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${jwt}`,
-                "atproto-proxy": `${config.did}#atproto_labeler`,
-                "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
+        const ozoneResult = await ozoneRequest(config, "POST", "tools.ozone.moderation.emitEvent", request);
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
               },
-              body: JSON.stringify(request),
-            }
-          );
-
-        let accessJwt = await getAccessToken(config);
-        let response = await emitEvent(accessJwt);
-
-        if (!response.ok) {
-          const body = await response.text();
-          const isExpired = body.includes("ExpiredToken");
-
-          if (isExpired) {
-            accessJwt = await refreshSession(config);
-            response = await emitEvent(accessJwt);
-          }
-
-          if (!response.ok) {
-            const retryBody = isExpired ? await response.text() : body;
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  text: `Ozone API error (${response.status}): ${retryBody}`,
-                },
-              ],
-            };
-          }
+            ],
+          };
         }
-
-        const responseBody = await response.text();
 
         const responseResult = {
           success: true,
           action,
           subject,
           label,
-          response: responseBody ? JSON.parse(responseBody) : null,
+          response: ozoneResult.data,
         };
 
         return {
@@ -307,6 +457,576 @@ export async function registerOzoneTool(
             {
               type: "text",
               text: JSON.stringify(responseResult, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: errorMessage,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "ozone_comment",
+    "Add a comment to a subject's moderation record. Comments can be pinned to the top of the moderation history.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z.string().describe("Comment text to add"),
+      sticky: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, comment is pinned to the top of the subject's moderation history (default: false)"
+        ),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventComment",
+          ...(args.sticky ? { sticky: true } : {}),
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_acknowledge",
+    "Acknowledge a subject, moving it from open to reviewed status. Can optionally acknowledge all reported content by an account.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment to attach"),
+      acknowledgeAccountSubjects: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also acknowledge all reported content by this account (default: false)"
+        ),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventAcknowledge",
+          ...(args.acknowledgeAccountSubjects
+            ? { acknowledgeAccountSubjects: true }
+            : {}),
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_escalate",
+    "Escalate a subject for higher-level review by the moderation team.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment explaining the escalation"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventEscalate",
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_tag",
+    "Add and/or remove tags from a subject for categorization and filtering.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      add: z.array(z.string()).default([]).describe("Tags to add"),
+      remove: z.array(z.string()).default([]).describe("Tags to remove"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      if (args.add.length === 0 && args.remove.length === 0) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "At least one of 'add' or 'remove' must be non-empty.",
+            },
+          ],
+        };
+      }
+
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventTag",
+          add: args.add,
+          remove: args.remove,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_mute",
+    "Mute a subject to temporarily suppress notifications and queue visibility for a specified duration.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      durationInHours: z
+        .number()
+        .positive()
+        .describe("How long to mute (in hours)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventMute",
+          durationInHours: args.durationInHours,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_unmute",
+    "Unmute a previously muted subject.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventUnmute",
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_resolve_appeal",
+    "Resolve an appeal on a subject by providing a required explanation.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z.string().describe("Required comment explaining the appeal resolution"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventResolveAppeal",
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_query_statuses",
+    "Query subject statuses from the Ozone moderation queue with optional filtering and pagination.",
+    {
+      subject: z.string().optional().describe("Filter by subject — a DID or AT-URI"),
+      reviewState: z
+        .enum(["open", "escalated", "closed", "none"])
+        .optional()
+        .describe("Filter by review state"),
+      sortField: z
+        .enum(["lastReportedAt", "lastReviewedAt", "priorityScore"])
+        .optional()
+        .describe("Field to sort by (default: lastReportedAt)"),
+      sortDirection: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Sort direction (default: desc)"),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe("Filter to subjects with ALL of these tags"),
+      excludeTags: z
+        .array(z.string())
+        .optional()
+        .describe("Exclude subjects with ANY of these tags"),
+      appealed: z.boolean().optional().describe("Filter by appeal status"),
+      takendown: z.boolean().optional().describe("Filter by takedown status"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results to return (default: 50, max: 100)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from previous response"),
+    },
+    async (args) => {
+      try {
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
+        }
+
+        const {
+          subject,
+          reviewState,
+          sortField,
+          sortDirection,
+          tags,
+          excludeTags,
+          appealed,
+          takendown,
+          limit,
+          cursor,
+        } = args;
+
+        const mappedReviewState = reviewState ? REVIEW_STATE_MAP[reviewState] : undefined;
+
+        const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
+          subject,
+          reviewState: mappedReviewState,
+          sortField,
+          sortDirection,
+          tags,
+          excludeTags,
+          appealed: appealed !== undefined ? String(appealed) : undefined,
+          takendown: takendown !== undefined ? String(takendown) : undefined,
+          limit: limit !== undefined ? String(limit) : undefined,
+          cursor,
+        };
+
+        const queryString = buildQueryString(queryParams);
+        const ozoneResult = await ozoneRequest(
+          config,
+          "GET",
+          `tools.ozone.moderation.queryStatuses${queryString}`,
+        );
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(ozoneResult.data, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: errorMessage,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "ozone_query_events",
+    "Query moderation events from Ozone with optional filtering and pagination.",
+    {
+      subject: z.string().optional().describe("Filter by subject — a DID or AT-URI"),
+      types: z
+        .array(
+          z.enum([
+            "takedown",
+            "reverseTakedown",
+            "comment",
+            "report",
+            "label",
+            "acknowledge",
+            "escalate",
+            "mute",
+            "unmute",
+            "muteReporter",
+            "unmuteReporter",
+            "email",
+            "resolveAppeal",
+            "divert",
+            "tag",
+            "accountEvent",
+            "identityEvent",
+            "recordEvent",
+          ]),
+        )
+        .optional()
+        .describe("Filter by event types (shorthand names)"),
+      createdBy: z
+        .string()
+        .optional()
+        .describe("Filter by the DID of the moderator who created the event"),
+      createdAfter: z
+        .string()
+        .optional()
+        .describe("Filter to events created after this ISO 8601 datetime"),
+      createdBefore: z
+        .string()
+        .optional()
+        .describe("Filter to events created before this ISO 8601 datetime"),
+      sortDirection: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Sort direction (default: desc)"),
+      hasComment: z.boolean().optional().describe("Filter to events that have a comment"),
+      addedLabels: z
+        .array(z.string())
+        .optional()
+        .describe("Filter to events that added these labels"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results to return (default: 50, max: 100)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from previous response"),
+    },
+    async (args) => {
+      try {
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
+        }
+
+        const {
+          subject,
+          types,
+          createdBy,
+          createdAfter,
+          createdBefore,
+          sortDirection,
+          hasComment,
+          addedLabels,
+          limit,
+          cursor,
+        } = args;
+
+        const mappedTypes = types
+          ? types.map((t) => {
+              const mapped = EVENT_TYPE_MAP[t as keyof typeof EVENT_TYPE_MAP];
+              if (!mapped) {
+                throw new Error(`Unknown event type: ${t}`);
+              }
+              return mapped;
+            })
+          : undefined;
+
+        const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
+          subject,
+          types: mappedTypes,
+          createdBy,
+          createdAfter,
+          createdBefore,
+          sortDirection,
+          hasComment: hasComment !== undefined ? String(hasComment) : undefined,
+          addedLabels,
+          limit: limit !== undefined ? String(limit) : undefined,
+          cursor,
+        };
+
+        const queryString = buildQueryString(queryParams);
+        const ozoneResult = await ozoneRequest(
+          config,
+          "GET",
+          `tools.ozone.moderation.queryEvents${queryString}`,
+        );
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(ozoneResult.data, null, 2),
             },
           ],
         };

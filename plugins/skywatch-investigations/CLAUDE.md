@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-03-23
+Last verified: 2026-03-24
 
 ## Purpose
 
@@ -9,6 +9,10 @@ Investigation toolkit for AT Protocol network analysis. Provides MCP tools for C
 ## Architecture
 
 Three layers — MCP server (native tool access), skills (codified methodology), agents (orchestrated workflows). The investigator agent delegates ClickHouse work to a data-analyst subagent while handling reconnaissance directly.
+
+**Phase 1 Refactoring (2026-03-24):** Ozone tool internals refactored to extract reusable helpers: `validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, and `ozoneRequest`. These enable future read tools and maintain zero-behaviour-change principle.
+
+**Phase 3: Write Tools (2026-03-24):** Added 7 write tools (comment, acknowledge, escalate, tag, mute, unmute, resolve_appeal) that emit moderation events via Ozone `emitEvent` API. All use the `emitOzoneEvent` helper for consistent event construction with $type, createdBy, modTool metadata, and batchId support.
 
 ## Contracts
 
@@ -22,7 +26,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
-- **MCP Tools** (11 total):
+- **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
   - `content_similarity` — Detect text similarity via ClickHouse ngramDistance
@@ -34,25 +38,38 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `url_expand` — Expand shortened URLs to full targets
   - `whois_lookup` — Query WHOIS databases for registrant information
   - `ozone_label` — Apply/remove moderation labels via Ozone API (supports comment and batchId for grouping related label operations)
+  - `ozone_query_statuses` — Query the Ozone moderation queue with filters for review state, tags, appeal/takedown status, and pagination
+  - `ozone_query_events` — Query moderation event history with filters for event type, moderator, date range, and labels
+  - `ozone_comment` — Add a comment to a subject's moderation record (supports sticky comments)
+  - `ozone_acknowledge` — Acknowledge a subject, moving it from open to reviewed (supports bulk account acknowledgement)
+  - `ozone_escalate` — Escalate a subject for higher-level review
+  - `ozone_tag` — Add and/or remove tags from a subject's moderation record
+  - `ozone_mute` — Mute a subject for a specified duration in hours
+  - `ozone_unmute` — Unmute a previously muted subject
+  - `ozone_resolve_appeal` — Resolve an appeal on a subject (requires comment)
 
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT + LIMIT only, restricted to: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass the JOIN restriction for server-built queries with sanitised inputs
-- Ozone labelling requires explicit credentials — fails gracefully without them
+- All Ozone tools require explicit credentials — fail gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
+- **Ozone internals (Phase 1):** Reusable helpers are exported (`validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, `ozoneRequest`) to support read and write tools. `ozone_label` handler uses these helpers with zero behaviour change.
+- **Ozone write tools (Phase 3):** All 7 write tools use the `emitOzoneEvent` helper to emit proper event payloads via Ozone `emitEvent` API. Each tool enforces required fields: `ozone_tag` requires at least one of add/remove; `ozone_resolve_appeal` requires comment.
+- All Ozone write tools include modTool metadata (`name: "skywatch-mcp"`, batchId) for traceability
+- All Ozone write tools validate credentials before attempting API calls
 
 ### Expects
 
 - ClickHouse access (direct or SSH mode) configured via env vars
 - Bun runtime installed for MCP server
-- Ozone credentials (optional — only for labelling): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
+- Ozone credentials (optional — only for read/write tools): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
 
 ## Dependencies
 
-- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API
+- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Does NOT overlap with osprey-rules plugin (rule writing) or osprey-rule-investigator (rule project analysis). The `accessing-osprey` skill provides context about the Osprey system but directs users to osprey-rules for rule authoring.
 
@@ -71,6 +88,16 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
 | "Is this account in a co-sharing network?" | `cosharing_clusters` tool with `did` param |
 | "Trace this cluster's history" | `cosharing_evolution` tool with `cluster_id` param |
+| "Label a subject in Ozone" | `ozone_label` tool |
+| "Query the moderation queue" | `ozone_query_statuses` tool or `data-analyst` agent |
+| "What moderation events happened on this account?" | `ozone_query_events` tool or `data-analyst` agent |
+| "Add a comment to this subject" | `ozone_comment` tool |
+| "Acknowledge this report" | `ozone_acknowledge` tool |
+| "Escalate this subject" | `ozone_escalate` tool |
+| "Tag/untag this subject" | `ozone_tag` tool |
+| "Mute this subject" | `ozone_mute` tool |
+| "Unmute this subject" | `ozone_unmute` tool |
+| "Resolve this appeal" | `ozone_resolve_appeal` tool |
 
 ## Key Files
 
@@ -85,7 +112,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
 | `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
-| `servers/skywatch-mcp/src/tools/` | Tool implementations (11 tools across 5 files) |
+| `servers/skywatch-mcp/src/tools/` | Tool implementations (20 tools across 5 files) |
+| `servers/skywatch-mcp/src/tools/ozone.ts` | 10 Ozone tools (1 label, 2 query, 7 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
 | `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
 
 ## Gotchas
@@ -102,3 +130,4 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Co-sharing tools use `queryTrusted` (bypasses SQL validator) — the queries are built server-side with sanitised inputs, not user-supplied SQL
 - `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that window return no results
 - `url_cosharing_clusters` has no TTL — cluster-level data is retained indefinitely
+- Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code
