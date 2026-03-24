@@ -215,6 +215,54 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
   return createSession(config);
 }
 
+export async function ozoneRequest(
+  config: OzoneConfig,
+  method: "GET" | "POST",
+  path: string,
+  body?: unknown,
+): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> {
+  const makeRequest = async (jwt: string): Promise<Response> =>
+    fetch(`https://${config.pdsHost}/xrpc/${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${jwt}`,
+        "atproto-proxy": `${config.did}#atproto_labeler`,
+        "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+
+  let accessJwt = await getAccessToken(config);
+  let response = await makeRequest(accessJwt);
+
+  if (!response.ok) {
+    const responseBody = await response.text();
+    const isExpired = responseBody.includes("ExpiredToken");
+
+    if (isExpired) {
+      accessJwt = await refreshSession(config);
+      response = await makeRequest(accessJwt);
+    }
+
+    if (!response.ok) {
+      const retryBody = isExpired ? await response.text() : responseBody;
+      return { ok: false, status: response.status, text: retryBody };
+    }
+  }
+
+  const responseText = await response.text();
+  try {
+    return { ok: true, data: responseText ? JSON.parse(responseText) : null };
+  } catch {
+    return {
+      ok: false,
+      status: response.status,
+      text: `Invalid JSON response: ${responseText.slice(0, 200)}`,
+    };
+  }
+}
+
 export async function registerOzoneTools(
   server: McpServer,
   config: OzoneConfig
@@ -268,55 +316,26 @@ export async function registerOzoneTools(
 
         const request = result.request;
 
-        const emitEvent = async (jwt: string) =>
-          fetch(
-            `https://${config.pdsHost}/xrpc/tools.ozone.moderation.emitEvent`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${jwt}`,
-                "atproto-proxy": `${config.did}#atproto_labeler`,
-                "atproto-accept-labelers": "did:plc:ar7c4by46qjdydhdevvrndac;redact",
+        const ozoneResult = await ozoneRequest(config, "POST", "tools.ozone.moderation.emitEvent", request);
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
               },
-              body: JSON.stringify(request),
-            }
-          );
-
-        let accessJwt = await getAccessToken(config);
-        let response = await emitEvent(accessJwt);
-
-        if (!response.ok) {
-          const body = await response.text();
-          const isExpired = body.includes("ExpiredToken");
-
-          if (isExpired) {
-            accessJwt = await refreshSession(config);
-            response = await emitEvent(accessJwt);
-          }
-
-          if (!response.ok) {
-            const retryBody = isExpired ? await response.text() : body;
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text",
-                  text: `Ozone API error (${response.status}): ${retryBody}`,
-                },
-              ],
-            };
-          }
+            ],
+          };
         }
-
-        const responseBody = await response.text();
 
         const responseResult = {
           success: true,
           action,
           subject,
           label,
-          response: responseBody ? JSON.parse(responseBody) : null,
+          response: ozoneResult.data,
         };
 
         return {
