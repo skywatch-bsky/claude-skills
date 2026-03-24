@@ -823,3 +823,416 @@ describe("ozone_query_events tool", () => {
     expect(handler).not.toBeNull();
   });
 });
+
+describe("ozone_comment tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_comment");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+      comment: "test comment",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.1: should register ozone_comment tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_comment");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.2: should include sticky flag in event payload when true", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_comment");
+      expect(handler).not.toBeNull();
+
+      const result = await (handler!({
+        subject: "did:plc:account123",
+        comment: "test comment",
+        sticky: true,
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventComment"
+      );
+      expect(capturedBody.event.sticky).toBe(true);
+      expect(capturedBody.event.comment).toBe("test comment");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC3.8: should include modTool with skywatch-mcp name", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_comment");
+      await (handler!({
+        subject: "did:plc:account123",
+        comment: "test comment",
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.modTool.name).toBe("skywatch-mcp");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC3.9: should set createdBy to config.did", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+      const modDid = "did:plc:moderator456";
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: modDid,
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_comment");
+      await (handler!({
+        subject: "did:plc:account123",
+        comment: "test comment",
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.createdBy).toBe(modDid);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("ozone_acknowledge tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_acknowledge");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.1: should register ozone_acknowledge tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_acknowledge");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.3: should include acknowledgeAccountSubjects flag in event payload when true", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_acknowledge");
+      expect(handler).not.toBeNull();
+
+      await (handler!({
+        subject: "did:plc:account123",
+        acknowledgeAccountSubjects: true,
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventAcknowledge"
+      );
+      expect(capturedBody.event.acknowledgeAccountSubjects).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("ozone_escalate tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_escalate");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.1: should register ozone_escalate tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_escalate");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.1: should set correct $type for escalate event", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_escalate");
+      await (handler!({
+        subject: "did:plc:account123",
+        comment: "needs review",
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventEscalate"
+      );
+      expect(capturedBody.event.comment).toBe("needs review");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
