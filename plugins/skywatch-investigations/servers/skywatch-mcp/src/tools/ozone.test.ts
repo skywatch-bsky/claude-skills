@@ -714,6 +714,7 @@ describe("buildQueryString", () => {
 
     expect(result).toContain("a=1");
     expect(result).toContain("b=2");
+    expect(result).not.toContain("tags");
   });
 
   it("AC2.6: should handle boolean values as strings", () => {

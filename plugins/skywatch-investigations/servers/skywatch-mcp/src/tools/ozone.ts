@@ -59,14 +59,14 @@ type OzoneEventRequest = {
   readonly modTool: ModTool;
 };
 
-const REVIEW_STATE_MAP: Record<string, string> = {
+export const REVIEW_STATE_MAP: Record<"open" | "escalated" | "closed" | "none", string> = {
   open: "tools.ozone.moderation.defs#reviewOpen",
   escalated: "tools.ozone.moderation.defs#reviewEscalated",
   closed: "tools.ozone.moderation.defs#reviewClosed",
   none: "tools.ozone.moderation.defs#reviewNone",
 };
 
-const EVENT_TYPE_MAP: Record<string, string> = {
+export const EVENT_TYPE_MAP: Record<"takedown" | "reverseTakedown" | "comment" | "report" | "label" | "acknowledge" | "escalate" | "mute" | "unmute" | "muteReporter" | "unmuteReporter" | "email" | "resolveAppeal" | "divert" | "tag" | "accountEvent" | "identityEvent" | "recordEvent", string> = {
   takedown: "tools.ozone.moderation.defs#modEventTakedown",
   reverseTakedown: "tools.ozone.moderation.defs#modEventReverseTakedown",
   comment: "tools.ozone.moderation.defs#modEventComment",
@@ -107,7 +107,7 @@ export function buildQueryString(
 
 export function validateOzoneConfig(
   config: OzoneConfig,
-): { isError: true; content: Array<{ type: string; text: string }> } | null {
+): { isError: true; content: Array<{ type: "text"; text: string }> } | null {
   if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
     return {
       isError: true,
@@ -312,8 +312,6 @@ export async function ozoneRequest(
     };
   }
 }
-
-export { REVIEW_STATE_MAP, EVENT_TYPE_MAP };
 
 export async function registerOzoneTools(
   server: McpServer,
@@ -615,7 +613,13 @@ export async function registerOzoneTools(
         } = args;
 
         const mappedTypes = types
-          ? types.map((t) => EVENT_TYPE_MAP[t])
+          ? types.map((t) => {
+              const mapped = EVENT_TYPE_MAP[t as keyof typeof EVENT_TYPE_MAP];
+              if (!mapped) {
+                throw new Error(`Unknown event type: ${t}`);
+              }
+              return mapped;
+            })
           : undefined;
 
         const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
