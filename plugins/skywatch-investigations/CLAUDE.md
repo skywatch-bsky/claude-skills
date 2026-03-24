@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-03-23
+Last verified: 2026-03-24
 
 ## Purpose
 
@@ -9,6 +9,8 @@ Investigation toolkit for AT Protocol network analysis. Provides MCP tools for C
 ## Architecture
 
 Three layers — MCP server (native tool access), skills (codified methodology), agents (orchestrated workflows). The investigator agent delegates ClickHouse work to a data-analyst subagent while handling reconnaissance directly.
+
+**Phase 1 Refactoring (2026-03-24):** Ozone tool internals refactored to extract reusable helpers: `validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, and `ozoneRequest`. These enable future read tools and maintain zero-behaviour-change principle.
 
 ## Contracts
 
@@ -43,6 +45,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Ozone labelling requires explicit credentials — fails gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
+- **Ozone internals (Phase 1):** Reusable helpers are exported (`validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, `ozoneRequest`) to support future read tools. `ozone_label` handler uses these helpers with zero behaviour change.
 
 ### Expects
 
@@ -86,6 +89,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
 | `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
 | `servers/skywatch-mcp/src/tools/` | Tool implementations (11 tools across 5 files) |
+| `servers/skywatch-mcp/src/tools/ozone.ts` | Ozone label tool + exported helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest) |
 | `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
 
 ## Gotchas
@@ -102,3 +106,4 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Co-sharing tools use `queryTrusted` (bypasses SQL validator) — the queries are built server-side with sanitised inputs, not user-supplied SQL
 - `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that window return no results
 - `url_cosharing_clusters` has no TTL — cluster-level data is retained indefinitely
+- Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code
