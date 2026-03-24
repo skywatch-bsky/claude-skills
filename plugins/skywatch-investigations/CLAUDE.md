@@ -26,7 +26,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
-- **MCP Tools** (18 total):
+- **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
   - `content_similarity` — Detect text similarity via ClickHouse ngramDistance
@@ -37,18 +37,16 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `ip_lookup` — Geolocate IP addresses via ip-api.com
   - `url_expand` — Expand shortened URLs to full targets
   - `whois_lookup` — Query WHOIS databases for registrant information
-  - **Read tools (Ozone):**
-    - `ozone_query_statuses` — Query subject statuses from moderation queue with filtering and pagination
-    - `ozone_query_events` — Query moderation events with filtering and pagination
-  - **Write tools (Ozone):**
-    - `ozone_label` — Apply/remove moderation labels via Ozone API
-    - `ozone_comment` — Add comments to subject's moderation record (with optional sticky pin)
-    - `ozone_acknowledge` — Acknowledge a subject, optionally acknowledging all content by account
-    - `ozone_escalate` — Escalate subject for higher-level review
-    - `ozone_tag` — Add/remove tags from subject (at least one of add/remove required)
-    - `ozone_mute` — Temporarily mute subject for specified duration
-    - `ozone_unmute` — Unmute previously muted subject
-    - `ozone_resolve_appeal` — Resolve appeal with required comment
+  - `ozone_label` — Apply/remove moderation labels via Ozone API (supports comment and batchId for grouping related label operations)
+  - `ozone_query_statuses` — Query the Ozone moderation queue with filters for review state, tags, appeal/takedown status, and pagination
+  - `ozone_query_events` — Query moderation event history with filters for event type, moderator, date range, and labels
+  - `ozone_comment` — Add a comment to a subject's moderation record (supports sticky comments)
+  - `ozone_acknowledge` — Acknowledge a subject, moving it from open to reviewed (supports bulk account acknowledgement)
+  - `ozone_escalate` — Escalate a subject for higher-level review
+  - `ozone_tag` — Add and/or remove tags from a subject's moderation record
+  - `ozone_mute` — Mute a subject for a specified duration in hours
+  - `ozone_unmute` — Unmute a previously muted subject
+  - `ozone_resolve_appeal` — Resolve an appeal on a subject (requires comment)
 
 ### Guarantees
 
@@ -60,6 +58,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
 - **Ozone internals (Phase 1):** Reusable helpers are exported (`validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, `ozoneRequest`) to support read and write tools. `ozone_label` handler uses these helpers with zero behaviour change.
 - **Ozone write tools (Phase 3):** All 7 write tools use the `emitOzoneEvent` helper to emit proper event payloads via Ozone `emitEvent` API. Each tool enforces required fields: `ozone_tag` requires at least one of add/remove; `ozone_resolve_appeal` requires comment.
+- All Ozone write tools include modTool metadata (`name: "skywatch-mcp"`, batchId) for traceability
+- All Ozone write tools validate credentials before attempting API calls
 
 ### Expects
 
@@ -88,12 +88,14 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
 | "Is this account in a co-sharing network?" | `cosharing_clusters` tool with `did` param |
 | "Trace this cluster's history" | `cosharing_evolution` tool with `cluster_id` param |
-| "Label a subject in Ozone" | `ozone_label` tool |
-| "Add comment to moderation record" | `ozone_comment` tool |
-| "Acknowledge or escalate a subject" | `ozone_acknowledge` or `ozone_escalate` tools |
-| "Tag, mute, or resolve appeal" | `ozone_tag`, `ozone_mute`, `ozone_unmute`, or `ozone_resolve_appeal` tools |
-| "Query Ozone moderation queue" | `ozone_query_statuses` tool |
-| "Query Ozone moderation events" | `ozone_query_events` tool |
+| "Query the moderation queue" | `ozone_query_statuses` tool or `data-analyst` agent |
+| "What moderation events happened on this account?" | `ozone_query_events` tool or `data-analyst` agent |
+| "Add a comment to this subject" | `ozone_comment` tool |
+| "Acknowledge this report" | `ozone_acknowledge` tool |
+| "Escalate this subject" | `ozone_escalate` tool |
+| "Tag/untag this subject" | `ozone_tag` tool |
+| "Mute this subject" | `ozone_mute` tool |
+| "Resolve this appeal" | `ozone_resolve_appeal` tool |
 
 ## Key Files
 
@@ -108,7 +110,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
 | `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
-| `servers/skywatch-mcp/src/tools/` | Tool implementations (18 tools across 5 files) |
+| `servers/skywatch-mcp/src/tools/` | Tool implementations (20 tools across 5 files) |
 | `servers/skywatch-mcp/src/tools/ozone.ts` | 10 Ozone tools (1 label, 2 query, 7 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
 | `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
 
