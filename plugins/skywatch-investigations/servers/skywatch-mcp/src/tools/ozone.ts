@@ -34,11 +34,11 @@ export type OzoneConfig = {
   readonly pdsHost: string | null;
 };
 
-type SubjectRef =
+export type SubjectRef =
   | { $type: "com.atproto.admin.defs#repoRef"; did: string }
   | { $type: "com.atproto.repo.strongRef"; uri: string; cid: string };
 
-type ModTool = {
+export type ModTool = {
   readonly name: string;
   readonly meta: {
     readonly time: string;
@@ -59,6 +59,64 @@ type OzoneEventRequest = {
   readonly modTool: ModTool;
 };
 
+export function validateOzoneConfig(
+  config: OzoneConfig,
+): { isError: true; content: Array<{ type: string; text: string }> } | null {
+  if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
+    return {
+      isError: true,
+      content: [
+        {
+          type: "text",
+          text: "Ozone is not configured. Set OZONE_HANDLE, OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
+        },
+      ],
+    };
+  }
+  return null;
+}
+
+export function buildSubjectRef(
+  subject: string,
+  cid?: string,
+): { ok: true; ref: SubjectRef } | { ok: false; error: string } {
+  if (subject.startsWith("did:")) {
+    return {
+      ok: true,
+      ref: { $type: "com.atproto.admin.defs#repoRef", did: subject },
+    };
+  }
+  if (subject.startsWith("at://")) {
+    if (!cid) {
+      return {
+        ok: false,
+        error:
+          "AT-URI subjects require a cid parameter. Use com.atproto.repo.getRecord to resolve the CID for the record.",
+      };
+    }
+    return {
+      ok: true,
+      ref: { $type: "com.atproto.repo.strongRef", uri: subject, cid },
+    };
+  }
+  return {
+    ok: false,
+    error:
+      'Subject must be a DID (did:plc:...) or AT-URI (at://...). Got: ' +
+      subject,
+  };
+}
+
+export function buildModTool(batchId?: string): ModTool {
+  return {
+    name: "skywatch-mcp",
+    meta: {
+      time: new Date().toISOString(),
+      batchId: batchId ?? uuidv7(),
+    },
+  };
+}
+
 export function buildOzoneRequest(
   subject: string,
   label: string,
@@ -68,6 +126,11 @@ export function buildOzoneRequest(
   batchId?: string,
   cid?: string
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
+  const subjectRefResult = buildSubjectRef(subject, cid);
+  if (!subjectRefResult.ok) {
+    return { ok: false, error: subjectRefResult.error };
+  }
+
   const event = {
     $type: "tools.ozone.moderation.defs#modEventLabel" as const,
     ...(comment ? { comment } : {}),
@@ -76,57 +139,18 @@ export function buildOzoneRequest(
   };
 
   const now = new Date().toISOString();
-  const modTool: ModTool = {
-    name: "skywatch-mcp",
-    meta: {
-      time: now,
-      batchId: batchId ?? uuidv7(),
+  const modTool = buildModTool(batchId);
+
+  return {
+    ok: true,
+    request: {
+      event,
+      subject: subjectRefResult.ref,
+      createdBy,
+      createdAt: now,
+      modTool,
     },
   };
-
-  if (subject.startsWith("did:")) {
-    return {
-      ok: true,
-      request: {
-        event,
-        subject: {
-          $type: "com.atproto.admin.defs#repoRef",
-          did: subject,
-        },
-        createdBy,
-        createdAt: now,
-        modTool,
-      },
-    };
-  } else if (subject.startsWith("at://")) {
-    if (!cid) {
-      return {
-        ok: false,
-        error: "AT-URI subjects require a cid parameter. Use com.atproto.repo.getRecord to resolve the CID for the record.",
-      };
-    }
-    return {
-      ok: true,
-      request: {
-        event,
-        subject: {
-          $type: "com.atproto.repo.strongRef",
-          uri: subject,
-          cid,
-        },
-        createdBy,
-        createdAt: now,
-        modTool,
-      },
-    };
-  } else {
-    return {
-      ok: false,
-      error:
-        'Subject must be a DID (did:plc:...) or AT-URI (at://...). Got: ' +
-        subject,
-    };
-  }
 }
 
 type SessionTokens = {
@@ -191,7 +215,7 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
   return createSession(config);
 }
 
-export async function registerOzoneTool(
+export async function registerOzoneTools(
   server: McpServer,
   config: OzoneConfig
 ): Promise<void> {
@@ -222,16 +246,9 @@ export async function registerOzoneTool(
     },
     async (args) => {
       try {
-        if (!config.handle || !config.adminPassword || !config.did || !config.pdsHost) {
-          return {
-            isError: true,
-            content: [
-              {
-                type: "text",
-                text: "Ozone is not configured. Set OZONE_HANDLE, OZONE_PDS, OZONE_ADMIN_PASSWORD, and OZONE_DID environment variables.",
-              },
-            ],
-          };
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
         }
 
         const { subject, label, action, comment, cid, batchId } = args;
