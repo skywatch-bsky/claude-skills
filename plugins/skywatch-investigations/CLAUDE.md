@@ -88,6 +88,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
 | "Is this account in a co-sharing network?" | `cosharing_clusters` tool with `did` param |
 | "Trace this cluster's history" | `cosharing_evolution` tool with `cluster_id` param |
+| "Label a subject in Ozone" | `ozone_label` tool |
 | "Query the moderation queue" | `ozone_query_statuses` tool or `data-analyst` agent |
 | "What moderation events happened on this account?" | `ozone_query_events` tool or `data-analyst` agent |
 | "Add a comment to this subject" | `ozone_comment` tool |
@@ -95,6 +96,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "Escalate this subject" | `ozone_escalate` tool |
 | "Tag/untag this subject" | `ozone_tag` tool |
 | "Mute this subject" | `ozone_mute` tool |
+| "Unmute this subject" | `ozone_unmute` tool |
 | "Resolve this appeal" | `ozone_resolve_appeal` tool |
 
 ## Key Files
