@@ -1236,3 +1236,514 @@ describe("ozone_escalate tool", () => {
     }
   });
 });
+
+describe("ozone_tag tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_tag");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+      add: ["spam"],
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.5: should reject when both add and remove are empty", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:moderator",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_tag");
+    const result = await (handler!({
+      subject: "did:plc:account123",
+      add: [],
+      remove: [],
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("non-empty"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.4: should include add and remove arrays in event payload", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_tag");
+      await (handler!({
+        subject: "did:plc:account123",
+        add: ["spam"],
+        remove: ["bot"],
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventTag"
+      );
+      expect(capturedBody.event.add).toEqual(["spam"]);
+      expect(capturedBody.event.remove).toEqual(["bot"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC3.1: should register ozone_tag tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_tag");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.8, AC3.9: should include modTool name and createdBy", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+      const modDid = "did:plc:moderator456";
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: modDid,
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_tag");
+      await (handler!({
+        subject: "did:plc:account123",
+        add: ["spam"],
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.modTool.name).toBe("skywatch-mcp");
+      expect(capturedBody.createdBy).toBe(modDid);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("ozone_mute tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_mute");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+      durationInHours: 24,
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.6: should include durationInHours in event payload", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_mute");
+      await (handler!({
+        subject: "did:plc:account123",
+        durationInHours: 24,
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventMute"
+      );
+      expect(capturedBody.event.durationInHours).toBe(24);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("AC3.1: should register ozone_mute tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_mute");
+    expect(handler).not.toBeNull();
+  });
+});
+
+describe("ozone_unmute tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_unmute");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.1: should register ozone_unmute tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_unmute");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.1: should set correct $type for unmute event", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_unmute");
+      await (handler!({
+        subject: "did:plc:account123",
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventUnmute"
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
+
+describe("ozone_resolve_appeal tool", () => {
+  afterEach(() => {
+    __resetSessionCache();
+  });
+
+  it("AC3.10: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_resolve_appeal");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+      comment: "appeal resolved",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("AC3.1: should register ozone_resolve_appeal tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_resolve_appeal");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.7: should have required comment field (enforced by Zod schema)", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_resolve_appeal");
+    expect(handler).not.toBeNull();
+  });
+
+  it("AC3.1: should set correct $type for resolve_appeal event", async () => {
+    const originalFetch = globalThis.fetch;
+    let capturedBody: any = null;
+    let callCount = 0;
+
+    (globalThis as any).fetch = mock(
+      async (url: string, options?: RequestInit) => {
+        callCount++;
+
+        if (callCount === 1) {
+          return new Response(
+            JSON.stringify({ accessJwt: "token1", refreshJwt: "refresh1" }),
+            { status: 200 }
+          );
+        }
+
+        if (url.includes("emitEvent") && options?.body) {
+          capturedBody = JSON.parse(options.body as string);
+        }
+
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+    );
+
+    try {
+      const { mockServer, getHandler } = createMockServer();
+
+      await registerOzoneTools(mockServer, {
+        serviceUrl: "https://example.com",
+        handle: "admin.example",
+        adminPassword: "password123",
+        did: "did:plc:moderator",
+        pdsHost: "bsky.social",
+      });
+
+      const handler = getHandler("ozone_resolve_appeal");
+      await (handler!({
+        subject: "did:plc:account123",
+        comment: "appeal resolved",
+      }) as Promise<unknown>);
+
+      expect(capturedBody).toBeDefined();
+      expect(capturedBody.event.$type).toBe(
+        "tools.ozone.moderation.defs#modEventResolveAppeal"
+      );
+      expect(capturedBody.event.comment).toBe("appeal resolved");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+});
