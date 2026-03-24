@@ -604,6 +604,180 @@ export async function registerOzoneTools(
   );
 
   server.tool(
+    "ozone_tag",
+    "Add and/or remove tags from a subject for categorization and filtering.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      add: z.array(z.string()).default([]).describe("Tags to add"),
+      remove: z.array(z.string()).default([]).describe("Tags to remove"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      if (args.add.length === 0 && args.remove.length === 0) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: "At least one of 'add' or 'remove' must be non-empty.",
+            },
+          ],
+        };
+      }
+
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventTag",
+          add: args.add,
+          remove: args.remove,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_mute",
+    "Mute a subject to temporarily suppress their content from the network.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      durationInHours: z
+        .number()
+        .positive()
+        .describe("How long to mute (in hours)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventMute",
+          durationInHours: args.durationInHours,
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_unmute",
+    "Unmute a previously muted subject.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventUnmute",
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_resolve_appeal",
+    "Resolve an appeal on a subject by providing a required explanation.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z.string().describe("Required comment explaining the appeal resolution"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventResolveAppeal",
+        },
+      });
+    }
+  );
+
+  server.tool(
     "ozone_query_statuses",
     "Query subject statuses from the Ozone moderation queue with optional filtering and pagination.",
     {
