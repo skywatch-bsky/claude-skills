@@ -10,7 +10,7 @@ import { registerIpTool } from "./tools/ip.ts";
 import { registerUrlTool } from "./tools/url.ts";
 import { registerWhoisTool } from "./tools/whois.ts";
 import { registerContentTool } from "./tools/content.ts";
-import { registerOzoneTool, type OzoneConfig } from "./tools/ozone.ts";
+import { registerOzoneTools, type OzoneConfig } from "./tools/ozone.ts";
 import { registerCosharingTools } from "./tools/cosharing.ts";
 
 function getEnv(key: string, defaultValue: string): string {
@@ -73,7 +73,7 @@ const ozoneConfig: OzoneConfig = {
   did: process.env["OZONE_DID"] ?? null,
   pdsHost: process.env["OZONE_PDS"] ?? null,
 };
-await registerOzoneTool(server, ozoneConfig);
+await registerOzoneTools(server, ozoneConfig);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
