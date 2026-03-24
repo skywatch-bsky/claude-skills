@@ -265,6 +265,67 @@ async function getAccessToken(config: OzoneConfig): Promise<string> {
   return createSession(config);
 }
 
+type EmitEventOptions = {
+  readonly config: OzoneConfig;
+  readonly subject: string;
+  readonly cid?: string;
+  readonly comment?: string;
+  readonly batchId?: string;
+  readonly event: Record<string, unknown>;
+};
+
+async function emitOzoneEvent(
+  options: EmitEventOptions,
+): Promise<{ isError?: true; content: Array<{ type: string; text: string }> }> {
+  try {
+    const configError = validateOzoneConfig(options.config);
+    if (configError) return configError;
+
+    const subjectResult = buildSubjectRef(options.subject, options.cid);
+    if (!subjectResult.ok) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: subjectResult.error }],
+      };
+    }
+
+    const body = {
+      event: {
+        ...options.event,
+        ...(options.comment ? { comment: options.comment } : {}),
+      },
+      subject: subjectResult.ref,
+      createdBy: options.config.did,
+      createdAt: new Date().toISOString(),
+      modTool: buildModTool(options.batchId),
+    };
+
+    const result = await ozoneRequest(
+      options.config,
+      "POST",
+      "tools.ozone.moderation.emitEvent",
+      body,
+    );
+
+    if (!result.ok) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Ozone API error (${result.status}): ${result.text}` }],
+      };
+    }
+
+    return {
+      content: [{ type: "text", text: JSON.stringify(result.data, null, 2) }],
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      isError: true,
+      content: [{ type: "text", text: errorMessage }],
+    };
+  }
+}
+
 export async function ozoneRequest(
   config: OzoneConfig,
   method: "GET" | "POST",
