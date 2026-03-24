@@ -206,6 +206,9 @@ type SessionTokens = {
 
 let cachedSession: SessionTokens | null = null;
 
+// Exported for test isolation: Bun's module-level state persists across test runs,
+// so this function allows test cleanup of the session cache between test cases.
+// Not part of the public API surface beyond testing.
 export function __resetSessionCache(): void {
   cachedSession = null;
 }
@@ -660,7 +663,7 @@ export async function registerOzoneTools(
 
   server.tool(
     "ozone_mute",
-    "Mute a subject to temporarily suppress their content from the network.",
+    "Mute a subject to temporarily suppress notifications and queue visibility for a specified duration.",
     {
       subject: z
         .string()

@@ -14,7 +14,7 @@ import {
 import { createMockServer } from "../test-utils";
 
 describe("registerOzoneTools handler", () => {
-  it("AC3.4: should return not configured error when credentials are null", async () => {
+  it("should return not configured error when credentials are null", async () => {
     const { mockServer, getHandler } = createMockServer();
 
     await registerOzoneTools(mockServer, {
