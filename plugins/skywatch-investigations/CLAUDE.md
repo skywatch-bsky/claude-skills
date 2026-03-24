@@ -109,7 +109,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
 | `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
 | `servers/skywatch-mcp/src/tools/` | Tool implementations (18 tools across 5 files) |
-| `servers/skywatch-mcp/src/tools/ozone.ts` | 9 Ozone tools (1 label, 2 query, 6 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
+| `servers/skywatch-mcp/src/tools/ozone.ts` | 10 Ozone tools (1 label, 2 query, 7 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
 | `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
 
 ## Gotchas
