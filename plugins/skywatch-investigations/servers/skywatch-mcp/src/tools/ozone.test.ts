@@ -7,6 +7,9 @@ import {
   registerOzoneTools,
   ozoneRequest,
   __resetSessionCache,
+  REVIEW_STATE_MAP,
+  EVENT_TYPE_MAP,
+  buildQueryString,
 } from "./ozone.ts";
 import { createMockServer } from "../test-utils";
 
@@ -618,5 +621,204 @@ describe("ozoneRequest", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+});
+
+describe("REVIEW_STATE_MAP", () => {
+  it("AC2.2: should map 'open' to tools.ozone.moderation.defs#reviewOpen", () => {
+    expect(REVIEW_STATE_MAP["open"]).toBe("tools.ozone.moderation.defs#reviewOpen");
+  });
+
+  it("AC2.2: should map 'escalated' to tools.ozone.moderation.defs#reviewEscalated", () => {
+    expect(REVIEW_STATE_MAP["escalated"]).toBe("tools.ozone.moderation.defs#reviewEscalated");
+  });
+
+  it("AC2.2: should map 'closed' to tools.ozone.moderation.defs#reviewClosed", () => {
+    expect(REVIEW_STATE_MAP["closed"]).toBe("tools.ozone.moderation.defs#reviewClosed");
+  });
+
+  it("AC2.2: should map 'none' to tools.ozone.moderation.defs#reviewNone", () => {
+    expect(REVIEW_STATE_MAP["none"]).toBe("tools.ozone.moderation.defs#reviewNone");
+  });
+});
+
+describe("EVENT_TYPE_MAP", () => {
+  it("AC2.4: should map 'comment' to tools.ozone.moderation.defs#modEventComment", () => {
+    expect(EVENT_TYPE_MAP["comment"]).toBe("tools.ozone.moderation.defs#modEventComment");
+  });
+
+  it("AC2.4: should map 'takedown' to tools.ozone.moderation.defs#modEventTakedown", () => {
+    expect(EVENT_TYPE_MAP["takedown"]).toBe("tools.ozone.moderation.defs#modEventTakedown");
+  });
+
+  it("AC2.4: should map 'label' to tools.ozone.moderation.defs#modEventLabel", () => {
+    expect(EVENT_TYPE_MAP["label"]).toBe("tools.ozone.moderation.defs#modEventLabel");
+  });
+
+  it("AC2.4: should map 'acknowledge' to tools.ozone.moderation.defs#modEventAcknowledge", () => {
+    expect(EVENT_TYPE_MAP["acknowledge"]).toBe("tools.ozone.moderation.defs#modEventAcknowledge");
+  });
+
+  it("AC2.4: should map 'escalate' to tools.ozone.moderation.defs#modEventEscalate", () => {
+    expect(EVENT_TYPE_MAP["escalate"]).toBe("tools.ozone.moderation.defs#modEventEscalate");
+  });
+
+  it("AC2.4: should map 'tag' to tools.ozone.moderation.defs#modEventTag", () => {
+    expect(EVENT_TYPE_MAP["tag"]).toBe("tools.ozone.moderation.defs#modEventTag");
+  });
+});
+
+describe("buildQueryString", () => {
+  it("AC2.6: should omit undefined values", () => {
+    const result = buildQueryString({
+      a: "1",
+      b: undefined,
+      c: "3",
+    });
+
+    expect(result).toBe("?a=1&c=3");
+  });
+
+  it("AC2.6: should return empty string when no params", () => {
+    const result = buildQueryString({});
+
+    expect(result).toBe("");
+  });
+
+  it("AC2.6: should return empty string when all params are undefined", () => {
+    const result = buildQueryString({
+      a: undefined,
+      b: undefined,
+    });
+
+    expect(result).toBe("");
+  });
+
+  it("AC2.6: should handle array values with multiple query params", () => {
+    const result = buildQueryString({
+      tags: ["tag1", "tag2"],
+      subject: "did:plc:example",
+    });
+
+    expect(result).toContain("tags=tag1");
+    expect(result).toContain("tags=tag2");
+    expect(result).toContain("subject=did%3Aplc%3Aexample");
+  });
+
+  it("AC2.6: should handle empty arrays as undefined", () => {
+    const result = buildQueryString({
+      a: "1",
+      tags: [],
+      b: "2",
+    });
+
+    expect(result).toContain("a=1");
+    expect(result).toContain("b=2");
+  });
+
+  it("AC2.6: should handle boolean values as strings", () => {
+    const result = buildQueryString({
+      appealed: "true",
+      takendown: "false",
+    });
+
+    expect(result).toContain("appealed=true");
+    expect(result).toContain("takendown=false");
+  });
+});
+
+describe("ozone_query_statuses tool", () => {
+  it("AC2.5: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_query_statuses");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("should register ozone_query_statuses tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_query_statuses");
+    expect(handler).not.toBeNull();
+  });
+});
+
+describe("ozone_query_events tool", () => {
+  it("AC2.5: should return not configured error when credentials are null", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: null,
+      handle: null,
+      adminPassword: null,
+      did: null,
+      pdsHost: null,
+    });
+
+    const capturedHandler = getHandler("ozone_query_events");
+    expect(capturedHandler).not.toBeNull();
+
+    const result = await (capturedHandler!({
+      subject: "did:plc:example123",
+    }) as Promise<unknown>);
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        isError: true,
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: "text",
+            text: expect.stringContaining("not configured"),
+          }),
+        ]),
+      })
+    );
+  });
+
+  it("should register ozone_query_events tool", async () => {
+    const { mockServer, getHandler } = createMockServer();
+
+    await registerOzoneTools(mockServer, {
+      serviceUrl: "https://example.com",
+      handle: "admin.example",
+      adminPassword: "password123",
+      did: "did:plc:example",
+      pdsHost: "bsky.social",
+    });
+
+    const handler = getHandler("ozone_query_events");
+    expect(handler).not.toBeNull();
   });
 });

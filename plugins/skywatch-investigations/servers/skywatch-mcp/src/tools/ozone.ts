@@ -59,6 +59,52 @@ type OzoneEventRequest = {
   readonly modTool: ModTool;
 };
 
+const REVIEW_STATE_MAP: Record<string, string> = {
+  open: "tools.ozone.moderation.defs#reviewOpen",
+  escalated: "tools.ozone.moderation.defs#reviewEscalated",
+  closed: "tools.ozone.moderation.defs#reviewClosed",
+  none: "tools.ozone.moderation.defs#reviewNone",
+};
+
+const EVENT_TYPE_MAP: Record<string, string> = {
+  takedown: "tools.ozone.moderation.defs#modEventTakedown",
+  reverseTakedown: "tools.ozone.moderation.defs#modEventReverseTakedown",
+  comment: "tools.ozone.moderation.defs#modEventComment",
+  report: "tools.ozone.moderation.defs#modEventReport",
+  label: "tools.ozone.moderation.defs#modEventLabel",
+  acknowledge: "tools.ozone.moderation.defs#modEventAcknowledge",
+  escalate: "tools.ozone.moderation.defs#modEventEscalate",
+  mute: "tools.ozone.moderation.defs#modEventMute",
+  unmute: "tools.ozone.moderation.defs#modEventUnmute",
+  muteReporter: "tools.ozone.moderation.defs#modEventMuteReporter",
+  unmuteReporter: "tools.ozone.moderation.defs#modEventUnmuteReporter",
+  email: "tools.ozone.moderation.defs#modEventEmail",
+  resolveAppeal: "tools.ozone.moderation.defs#modEventResolveAppeal",
+  divert: "tools.ozone.moderation.defs#modEventDivert",
+  tag: "tools.ozone.moderation.defs#modEventTag",
+  accountEvent: "tools.ozone.moderation.defs#accountEvent",
+  identityEvent: "tools.ozone.moderation.defs#identityEvent",
+  recordEvent: "tools.ozone.moderation.defs#recordEvent",
+};
+
+export function buildQueryString(
+  params: Record<string, string | ReadonlyArray<string> | undefined>,
+): string {
+  const searchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        searchParams.append(key, item);
+      }
+    } else {
+      searchParams.set(key, value);
+    }
+  }
+  const qs = searchParams.toString();
+  return qs ? `?${qs}` : "";
+}
+
 export function validateOzoneConfig(
   config: OzoneConfig,
 ): { isError: true; content: Array<{ type: string; text: string }> } | null {
@@ -267,6 +313,8 @@ export async function ozoneRequest(
   }
 }
 
+export { REVIEW_STATE_MAP, EVENT_TYPE_MAP };
+
 export async function registerOzoneTools(
   server: McpServer,
   config: OzoneConfig
@@ -347,6 +395,266 @@ export async function registerOzoneTools(
             {
               type: "text",
               text: JSON.stringify(responseResult, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: errorMessage,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "ozone_query_statuses",
+    "Query subject statuses from the Ozone moderation queue with optional filtering and pagination.",
+    {
+      subject: z.string().optional().describe("Filter by subject — a DID or AT-URI"),
+      reviewState: z
+        .enum(["open", "escalated", "closed", "none"])
+        .optional()
+        .describe("Filter by review state"),
+      sortField: z
+        .enum(["lastReportedAt", "lastReviewedAt", "priorityScore"])
+        .optional()
+        .describe("Field to sort by (default: lastReportedAt)"),
+      sortDirection: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Sort direction (default: desc)"),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe("Filter to subjects with ALL of these tags"),
+      excludeTags: z
+        .array(z.string())
+        .optional()
+        .describe("Exclude subjects with ANY of these tags"),
+      appealed: z.boolean().optional().describe("Filter by appeal status"),
+      takendown: z.boolean().optional().describe("Filter by takedown status"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results to return (default: 50, max: 100)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from previous response"),
+    },
+    async (args) => {
+      try {
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
+        }
+
+        const {
+          subject,
+          reviewState,
+          sortField,
+          sortDirection,
+          tags,
+          excludeTags,
+          appealed,
+          takendown,
+          limit,
+          cursor,
+        } = args;
+
+        const mappedReviewState = reviewState ? REVIEW_STATE_MAP[reviewState] : undefined;
+
+        const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
+          subject,
+          reviewState: mappedReviewState,
+          sortField,
+          sortDirection,
+          tags,
+          excludeTags,
+          appealed: appealed !== undefined ? String(appealed) : undefined,
+          takendown: takendown !== undefined ? String(takendown) : undefined,
+          limit: limit !== undefined ? String(limit) : undefined,
+          cursor,
+        };
+
+        const queryString = buildQueryString(queryParams);
+        const ozoneResult = await ozoneRequest(
+          config,
+          "GET",
+          `tools.ozone.moderation.queryStatuses${queryString}`,
+        );
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(ozoneResult.data, null, 2),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        return {
+          isError: true,
+          content: [
+            {
+              type: "text",
+              text: errorMessage,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  server.tool(
+    "ozone_query_events",
+    "Query moderation events from Ozone with optional filtering and pagination.",
+    {
+      subject: z.string().optional().describe("Filter by subject — a DID or AT-URI"),
+      types: z
+        .array(
+          z.enum([
+            "takedown",
+            "reverseTakedown",
+            "comment",
+            "report",
+            "label",
+            "acknowledge",
+            "escalate",
+            "mute",
+            "unmute",
+            "muteReporter",
+            "unmuteReporter",
+            "email",
+            "resolveAppeal",
+            "divert",
+            "tag",
+            "accountEvent",
+            "identityEvent",
+            "recordEvent",
+          ]),
+        )
+        .optional()
+        .describe("Filter by event types (shorthand names)"),
+      createdBy: z
+        .string()
+        .optional()
+        .describe("Filter by the DID of the moderator who created the event"),
+      createdAfter: z
+        .string()
+        .optional()
+        .describe("Filter to events created after this ISO 8601 datetime"),
+      createdBefore: z
+        .string()
+        .optional()
+        .describe("Filter to events created before this ISO 8601 datetime"),
+      sortDirection: z
+        .enum(["asc", "desc"])
+        .optional()
+        .describe("Sort direction (default: desc)"),
+      hasComment: z.boolean().optional().describe("Filter to events that have a comment"),
+      addedLabels: z
+        .array(z.string())
+        .optional()
+        .describe("Filter to events that added these labels"),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(100)
+        .optional()
+        .describe("Number of results to return (default: 50, max: 100)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe("Pagination cursor from previous response"),
+    },
+    async (args) => {
+      try {
+        const configError = validateOzoneConfig(config);
+        if (configError) {
+          return configError;
+        }
+
+        const {
+          subject,
+          types,
+          createdBy,
+          createdAfter,
+          createdBefore,
+          sortDirection,
+          hasComment,
+          addedLabels,
+          limit,
+          cursor,
+        } = args;
+
+        const mappedTypes = types
+          ? types.map((t) => EVENT_TYPE_MAP[t])
+          : undefined;
+
+        const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
+          subject,
+          types: mappedTypes,
+          createdBy,
+          createdAfter,
+          createdBefore,
+          sortDirection,
+          hasComment: hasComment !== undefined ? String(hasComment) : undefined,
+          addedLabels,
+          limit: limit !== undefined ? String(limit) : undefined,
+          cursor,
+        };
+
+        const queryString = buildQueryString(queryParams);
+        const ozoneResult = await ozoneRequest(
+          config,
+          "GET",
+          `tools.ozone.moderation.queryEvents${queryString}`,
+        );
+
+        if (!ozoneResult.ok) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: "text",
+                text: `Ozone API error (${ozoneResult.status}): ${ozoneResult.text}`,
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(ozoneResult.data, null, 2),
             },
           ],
         };
