@@ -474,6 +474,136 @@ export async function registerOzoneTools(
   );
 
   server.tool(
+    "ozone_comment",
+    "Add a comment to a subject's moderation record. Comments can be pinned to the top of the moderation history.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z.string().describe("Comment text to add"),
+      sticky: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, comment is pinned to the top of the subject's moderation history (default: false)"
+        ),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventComment",
+          ...(args.sticky ? { sticky: true } : {}),
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_acknowledge",
+    "Acknowledge a subject, moving it from open to reviewed status. Can optionally acknowledge all reported content by an account.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment to attach"),
+      acknowledgeAccountSubjects: z
+        .boolean()
+        .optional()
+        .describe(
+          "If true, also acknowledge all reported content by this account (default: false)"
+        ),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventAcknowledge",
+          ...(args.acknowledgeAccountSubjects
+            ? { acknowledgeAccountSubjects: true }
+            : {}),
+        },
+      });
+    }
+  );
+
+  server.tool(
+    "ozone_escalate",
+    "Escalate a subject for higher-level review by the moderation team.",
+    {
+      subject: z
+        .string()
+        .describe("Subject — a DID (did:plc:...) or AT-URI (at://...)"),
+      comment: z
+        .string()
+        .optional()
+        .describe("Optional comment explaining the escalation"),
+      cid: z
+        .string()
+        .optional()
+        .describe(
+          "CID of the record. Required when subject is an AT-URI."
+        ),
+      batchId: z
+        .string()
+        .uuid()
+        .optional()
+        .describe(
+          "UUID to group related actions into a batch. Auto-generated if omitted."
+        ),
+    },
+    async (args) => {
+      return emitOzoneEvent({
+        config,
+        subject: args.subject,
+        cid: args.cid,
+        comment: args.comment,
+        batchId: args.batchId,
+        event: {
+          $type: "tools.ozone.moderation.defs#modEventEscalate",
+        },
+      });
+    }
+  );
+
+  server.tool(
     "ozone_query_statuses",
     "Query subject statuses from the Ozone moderation queue with optional filtering and pagination.",
     {
