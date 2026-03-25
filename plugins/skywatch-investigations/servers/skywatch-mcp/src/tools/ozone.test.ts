@@ -257,6 +257,40 @@ describe("buildOzoneRequest", () => {
       result2.request.modTool.meta.batchId
     );
   });
+
+  it("should include durationInHours in event when provided", () => {
+    const result = buildOzoneRequest(
+      "did:plc:example123",
+      "spam",
+      "apply",
+      "did:plc:moderator456",
+      undefined,
+      undefined,
+      undefined,
+      72,
+    );
+
+    if (!result.ok) {
+      throw new Error("Should not have error");
+    }
+
+    expect(result.request.event.durationInHours).toBe(72);
+  });
+
+  it("should omit durationInHours from event when not provided", () => {
+    const result = buildOzoneRequest(
+      "did:plc:example123",
+      "spam",
+      "apply",
+      "did:plc:moderator456",
+    );
+
+    if (!result.ok) {
+      throw new Error("Should not have error");
+    }
+
+    expect(result.request.event).not.toHaveProperty("durationInHours");
+  });
 });
 
 describe("buildSubjectRef", () => {

@@ -170,7 +170,8 @@ export function buildOzoneRequest(
   createdBy: string,
   comment?: string,
   batchId?: string,
-  cid?: string
+  cid?: string,
+  durationInHours?: number,
 ): { ok: true; request: OzoneEventRequest } | { ok: false; error: string } {
   const subjectRefResult = buildSubjectRef(subject, cid);
   if (!subjectRefResult.ok) {
@@ -182,6 +183,7 @@ export function buildOzoneRequest(
     ...(comment ? { comment } : {}),
     createLabelVals: action === "apply" ? [label] : [],
     negateLabelVals: action === "remove" ? [label] : [],
+    ...(durationInHours !== undefined ? { durationInHours } : {}),
   };
 
   const now = new Date().toISOString();
@@ -405,6 +407,12 @@ export async function registerOzoneTools(
         .uuid()
         .optional()
         .describe("UUID to group related label operations into a batch. All labels applied as part of the same investigation action should share one batchId. If omitted, a new UUID is generated per call."),
+      durationInHours: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("How long the label will remain on the subject (in hours) before automatically expiring. Only applies when action is 'apply'. Omit for permanent labels."),
     },
     async (args) => {
       try {
@@ -413,9 +421,9 @@ export async function registerOzoneTools(
           return configError;
         }
 
-        const { subject, label, action, comment, cid, batchId } = args;
+        const { subject, label, action, comment, cid, batchId, durationInHours } = args;
 
-        const result = buildOzoneRequest(subject, label, action, config.did, comment, batchId, cid);
+        const result = buildOzoneRequest(subject, label, action, config.did, comment, batchId, cid, durationInHours);
         if (!result.ok) {
           return {
             isError: true,
