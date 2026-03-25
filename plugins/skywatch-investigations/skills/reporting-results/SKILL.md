@@ -264,6 +264,24 @@ Use bullet lists for evidence summaries and qualitative findings:
 - Evidence 3: description and supporting detail
 ```
 
+### Internal References
+
+Use Obsidian wiki-style links for all internal references within reports — other reports, accounts, skills, or investigation artefacts.
+
+**Format:**
+- Link to other reports: `[[2026-03-19-cell-coordinated-network-47]]`
+- Link to specific sections: `[[2026-03-19-cell-coordinated-network-47#Network Summary]]`
+- Link to accounts: `[[accounts/did:plc:abc123]]`
+- Link to related skills: `[[conducting-investigations]]`, `[[querying-clickhouse]]`
+
+**When to use:**
+- Referencing a prior investigation or related report
+- Linking to accounts that have their own profiles or prior reports
+- Cross-referencing sections within the same report
+- Citing related skills or methodology
+
+**Do not use** standard markdown links (`[text](url)`) for internal references. Reserve markdown links for external URLs only.
+
 ### SQL Queries
 
 Always include the queries used for data extraction in code blocks with ClickHouse syntax highlighting:
@@ -339,9 +357,9 @@ investigations/
 
 ## Integration with Related Skills
 
-- **conducting-investigations** — For investigation methodology and Phase 1-5 guidance
-- **accessing-osprey** — For moderation label operations (Phase 6 enforcement)
-- **querying-clickhouse** — For SQL query construction and optimisation
+- **[[conducting-investigations]]** — For investigation methodology and Phase 1-5 guidance
+- **[[accessing-osprey]]** — For moderation label operations (Phase 6 enforcement)
+- **[[querying-clickhouse]]** — For SQL query construction and optimisation
 
 ---
 
@@ -371,8 +389,13 @@ Use this checklist when reviewing investigation reports before publication:
 **Clarity:**
 - [ ] Report type is appropriate for scope and findings
 - [ ] Language is clear and unambiguous
-- [ ] Technical terms are defined or linked
+- [ ] Technical terms are defined or linked using `[[wiki-style]]` links
 - [ ] Tables and timelines are properly formatted
+
+**Linking:**
+- [ ] All internal references use `[[wiki-style]]` links (not markdown links)
+- [ ] Cross-references to other reports resolve correctly
+- [ ] Related skills and accounts are linked
 
 **Completeness:**
 - [ ] All recommended next steps are addressed

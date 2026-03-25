@@ -25,6 +25,7 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - `clickhouse_query` — Extract rule hit history, temporal distribution, rule types triggered
 - `clickhouse_query` on `account_entropy_results` — Check if target accounts are flagged as bot-like
 - `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear in anomalous domain sharing events (via `sample_dids`)
+- `clickhouse_query` on `signup_anomaly` — Check if target accounts appear on PdsHost with anomalous PDS signup volume
 - `cosharing_clusters` with `did` — Check if target accounts belong to any co-sharing clusters. Cluster membership is an early coordination signal.
 - `domain_check` — Verify any domains mentioned in problematic content
 
