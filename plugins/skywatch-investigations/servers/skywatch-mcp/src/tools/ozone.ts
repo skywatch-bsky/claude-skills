@@ -851,6 +851,7 @@ export async function registerOzoneTools(
 
         const queryParams: Record<string, string | ReadonlyArray<string> | undefined> = {
           subject,
+          includeAllUserRecords: "true",
           reviewState: mappedReviewState,
           sortField,
           sortDirection,
