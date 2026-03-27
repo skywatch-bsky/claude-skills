@@ -87,12 +87,20 @@ export function validateQuery(sql: string): ValidationResult {
     "DEFAULT.URL_COSHARING_CLUSTERS",
     "URL_COSHARING_MEMBERSHIP",
     "DEFAULT.URL_COSHARING_MEMBERSHIP",
+    "QUOTE_COSHARING_PAIRS",
+    "DEFAULT.QUOTE_COSHARING_PAIRS",
+    "QUOTE_COSHARING_CLUSTERS",
+    "DEFAULT.QUOTE_COSHARING_CLUSTERS",
+    "QUOTE_COSHARING_MEMBERSHIP",
+    "DEFAULT.QUOTE_COSHARING_MEMBERSHIP",
+    "QUOTE_OVERDISPERSION_RESULTS",
+    "DEFAULT.QUOTE_OVERDISPERSION_RESULTS",
   ];
 
   if (!validTables.includes(tableRef)) {
     return {
       valid: false,
-      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership), but targets '${tableRef}'`,
+      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership, quote_overdispersion_results), but targets '${tableRef}'`,
     };
   }
 

@@ -11,7 +11,7 @@ export async function registerClickHouseTools(
 ): Promise<void> {
   server.tool(
     "clickhouse_query",
-    "Execute a read-only SQL query against the Osprey ClickHouse database. Only SELECT queries with LIMIT against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, or url_cosharing_membership are allowed. For co-sharing analysis, prefer the dedicated cosharing_clusters/cosharing_pairs/cosharing_evolution tools which support JOINs.",
+    "Execute a read-only SQL query against the Osprey ClickHouse database. Only SELECT queries with LIMIT against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership, or quote_overdispersion_results are allowed. For co-sharing analysis, prefer the dedicated cosharing_clusters/cosharing_pairs/cosharing_evolution tools which support JOINs.",
     {
       sql: z
         .string()
@@ -46,7 +46,7 @@ export async function registerClickHouseTools(
 
   server.tool(
     "clickhouse_schema",
-    "Get the column definitions (names and types) for all queryable tables: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, and url_cosharing_membership.",
+    "Get the column definitions (names and types) for all queryable tables: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership, and quote_overdispersion_results.",
     {},
     async () => {
       try {
