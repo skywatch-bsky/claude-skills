@@ -7,14 +7,13 @@ import type { ClickHouseClient } from "../lib/clickhouse-client.ts";
 
 type CosharingType = "url" | "quote";
 
-type TableNames = {
+interface TableNames {
   pairs: string;
   clusters: string;
   membership: string;
   sharedColumn: string;
   uniqueColumn: string;
-  sampleColumn: string;
-};
+}
 
 function tablesFor(type: CosharingType): TableNames {
   if (type === "quote") {
@@ -24,7 +23,6 @@ function tablesFor(type: CosharingType): TableNames {
       membership: "quote_cosharing_membership",
       sharedColumn: "shared_uris",
       uniqueColumn: "unique_uris",
-      sampleColumn: "sample_uris",
     };
   }
   return {
@@ -33,7 +31,6 @@ function tablesFor(type: CosharingType): TableNames {
     membership: "url_cosharing_membership",
     sharedColumn: "shared_urls",
     uniqueColumn: "unique_urls",
-    sampleColumn: "sample_urls",
   };
 }
 
@@ -63,7 +60,7 @@ function buildClustersQuery(params: {
        c.total_weight, c.${t.uniqueColumn}, c.temporal_spread_hours,
        c.mean_posting_interval_seconds, c.evolution_type,
        c.predecessor_cluster_ids, c.jaccard_score,
-       c.sample_dids, c.${t.sampleColumn}
+       c.sample_dids, c.sample_${type === "quote" ? "uris" : "urls"}
 FROM ${t.membership} m
 JOIN ${t.clusters} c
   ON m.cluster_id = c.cluster_id AND m.run_date = c.run_date
@@ -79,7 +76,7 @@ LIMIT ${limit}`;
        total_weight, ${t.uniqueColumn}, temporal_spread_hours,
        mean_posting_interval_seconds, evolution_type,
        predecessor_cluster_ids, jaccard_score,
-       sample_dids, ${t.sampleColumn}
+       sample_dids, sample_${type === "quote" ? "uris" : "urls"}
 FROM ${t.clusters}
 WHERE cluster_id = '${safeId}' ${dateFilter}
 ORDER BY run_date DESC
@@ -92,7 +89,7 @@ LIMIT ${limit}`;
        total_weight, ${t.uniqueColumn}, temporal_spread_hours,
        mean_posting_interval_seconds, evolution_type,
        predecessor_cluster_ids, jaccard_score,
-       sample_dids, ${t.sampleColumn}
+       sample_dids, sample_${type === "quote" ? "uris" : "urls"}
 FROM ${t.clusters}
 WHERE ${dateFilter} ${memberFilter}
 ORDER BY member_count DESC
