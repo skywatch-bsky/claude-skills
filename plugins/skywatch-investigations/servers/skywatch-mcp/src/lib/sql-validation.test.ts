@@ -248,69 +248,6 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
-
-    it("should accept queries targeting quote_cosharing_pairs", () => {
-      const result = validateQuery(
-        "SELECT * FROM quote_cosharing_pairs LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.quote_cosharing_pairs", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.quote_cosharing_pairs LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting quote_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM quote_cosharing_clusters LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.quote_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.quote_cosharing_clusters LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting quote_cosharing_membership", () => {
-      const result = validateQuery(
-        "SELECT * FROM quote_cosharing_membership LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.quote_cosharing_membership", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.quote_cosharing_membership LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting quote_overdispersion_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM quote_overdispersion_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.quote_overdispersion_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.quote_overdispersion_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept case-insensitive quote_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM QUOTE_COSHARING_CLUSTERS LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
   });
 
   describe("Case-insensitive handling", () => {

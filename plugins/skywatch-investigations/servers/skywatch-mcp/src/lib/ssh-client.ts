@@ -85,10 +85,6 @@ export function createSshClient(config: SshClientConfig): SshClient {
         "default.url_cosharing_pairs",
         "default.url_cosharing_clusters",
         "default.url_cosharing_membership",
-        "default.quote_cosharing_pairs",
-        "default.quote_cosharing_clusters",
-        "default.quote_cosharing_membership",
-        "default.quote_overdispersion_results",
       ];
 
       let combined: QueryResult = { columns: [], rows: [] };

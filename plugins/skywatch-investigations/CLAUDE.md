@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-03-27
+Last verified: 2026-03-24
 
 ## Purpose
 
@@ -27,12 +27,12 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
 - **MCP Tools** (20 total):
-  - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, quote_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership
+  - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
   - `content_similarity` — Detect text similarity via ClickHouse ngramDistance
-  - `cosharing_clusters` — Find co-sharing clusters by DID, cluster_id, date, or minimum size. Supports `type` param: `url` (default) or `quote` for quote-post co-sharing
-  - `cosharing_pairs` — Get raw co-sharing pairs for a specific DID with edge weights and shared URLs/URIs. Supports `type` param: `url` (default) or `quote`
-  - `cosharing_evolution` — Trace a cluster's evolution history (births, merges, splits, deaths). Supports `type` param: `url` (default) or `quote`
+  - `cosharing_clusters` — Find URL co-sharing clusters by DID, cluster_id, date, or minimum size (supports JOINs internally)
+  - `cosharing_pairs` — Get raw co-sharing pairs for a specific DID with edge weights and shared URLs
+  - `cosharing_evolution` — Trace a cluster's evolution history (births, merges, splits, deaths)
   - `domain_check` — Verify domain registration and WHOIS data
   - `ip_lookup` — Geolocate IP addresses via ip-api.com
   - `url_expand` — Expand shortened URLs to full targets
@@ -51,8 +51,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
-- All ClickHouse queries via `clickhouse_query` are read-only (SELECT + LIMIT only, restricted to: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, quote_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership)
-- Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass the JOIN restriction for server-built queries with sanitised inputs. The `type` param (`url`|`quote`) selects which table family to query
+- All ClickHouse queries via `clickhouse_query` are read-only (SELECT + LIMIT only, restricted to: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership)
+- Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass the JOIN restriction for server-built queries with sanitised inputs
 - All Ozone tools require explicit credentials — fail gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
@@ -69,7 +69,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 ## Dependencies
 
-- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, quote_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership, quote_cosharing_pairs, quote_cosharing_clusters, quote_cosharing_membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
+- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Does NOT overlap with osprey-rules plugin (rule writing) or osprey-rule-investigator (rule project analysis). The `accessing-osprey` skill provides context about the Osprey system but directs users to osprey-rules for rule authoring.
 
@@ -88,9 +88,6 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
 | "Is this account in a co-sharing network?" | `cosharing_clusters` tool with `did` param |
 | "Trace this cluster's history" | `cosharing_evolution` tool with `cluster_id` param |
-| "Find quote-post co-sharing clusters" | `cosharing_clusters` tool with `type: "quote"` |
-| "Is this account in a quote co-sharing network?" | `cosharing_clusters` tool with `type: "quote"` and `did` param |
-| "Find coordinated quote-posting" | `data-analyst` agent (query `quote_overdispersion_results`) or `cosharing_clusters` with `type: "quote"` |
 | "Label a subject in Ozone" | `ozone_label` tool |
 | "Query the moderation queue" | `ozone_query_statuses` tool or `data-analyst` agent |
 | "What moderation events happened on this account?" | `ozone_query_events` tool or `data-analyst` agent |
@@ -106,7 +103,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.17.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.15.0, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse/SSH env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
@@ -117,7 +114,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
 | `servers/skywatch-mcp/src/tools/` | Tool implementations (20 tools across 5 files) |
 | `servers/skywatch-mcp/src/tools/ozone.ts` | 10 Ozone tools (1 label, 2 query, 7 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
-| `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools (URL + quote-post via `type` param) |
+| `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
 
 ## Gotchas
 
@@ -131,6 +128,6 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - SSH mode requires `SSH_HOST`, `SSH_USER`, and `SSH_DOCKER_CONTAINER` to be configured
 - Investigator never writes queries directly; if you see it writing SQL, something is wrong
 - Co-sharing tools use `queryTrusted` (bypasses SQL validator) — the queries are built server-side with sanitised inputs, not user-supplied SQL
-- `url_cosharing_pairs`, `url_cosharing_membership`, `quote_cosharing_pairs`, and `quote_cosharing_membership` have 7-day TTL — queries beyond that window return no results
-- `url_cosharing_clusters` and `quote_cosharing_clusters` have no TTL — cluster-level data is retained indefinitely
+- `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that window return no results
+- `url_cosharing_clusters` has no TTL — cluster-level data is retained indefinitely
 - Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code
