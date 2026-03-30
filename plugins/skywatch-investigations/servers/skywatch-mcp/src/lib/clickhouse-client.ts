@@ -1,9 +1,9 @@
 // pattern: Imperative Shell
-// ClickHouse client abstraction with strategy pattern for direct/SSH modes
+// ClickHouse client abstraction using @clickhouse/client with JSON format
 
-import { createClient } from "@clickhouse/client";
+import { createClient, type ClickHouseClient as NativeClient } from "@clickhouse/client";
+import type { ResponseJSON } from "@clickhouse/client-common";
 import { validateQuery } from "./sql-validation";
-import { createSshClient } from "./ssh-client";
 
 export type QueryResult = {
   readonly columns: ReadonlyArray<{ name: string; type: string }>;
@@ -16,7 +16,7 @@ export type ClickHouseClient = {
   getSchema(): Promise<QueryResult>;
 };
 
-type DirectClientConfig = {
+export type ClickHouseClientConfig = {
   readonly host: string;
   readonly port: number;
   readonly username: string;
@@ -24,21 +24,43 @@ type DirectClientConfig = {
   readonly database: string;
 };
 
-export type ClickHouseMode = "direct" | "ssh";
+const SCHEMA_TABLES = [
+  "default.osprey_execution_results",
+  "default.pds_signup_anomalies",
+  "default.url_overdispersion_results",
+  "default.account_entropy_results",
+  "default.url_cosharing_pairs",
+  "default.url_cosharing_clusters",
+  "default.url_cosharing_membership",
+] as const;
 
-export type ClickHouseConnectionConfig = {
-  readonly mode: ClickHouseMode;
-  readonly host?: string;
-  readonly port?: number;
-  readonly username?: string;
-  readonly password?: string;
-  readonly database?: string;
-  readonly sshHost?: string;
-  readonly sshUser?: string;
-  readonly dockerContainer?: string;
-};
+function toQueryResult(response: ResponseJSON): QueryResult {
+  return {
+    columns: response.meta ?? [],
+    rows: response.data as Array<Record<string, unknown>>,
+  };
+}
 
-function createDirectClient(config: DirectClientConfig): ClickHouseClient {
+async function executeQuery(
+  client: NativeClient,
+  sql: string,
+  maxExecutionTime: number,
+): Promise<QueryResult> {
+  const resultSet = await client.query({
+    query: sql,
+    format: "JSON",
+    clickhouse_settings: {
+      max_execution_time: maxExecutionTime,
+    },
+  });
+
+  const response = await resultSet.json();
+  return toQueryResult(response);
+}
+
+export function createClickHouseClient(
+  config: ClickHouseClientConfig,
+): ClickHouseClient {
   const url = `${config.host}:${config.port}`;
 
   const client = createClient({
@@ -55,178 +77,32 @@ function createDirectClient(config: DirectClientConfig): ClickHouseClient {
         throw new Error(`Query validation failed: ${validation.reason}`);
       }
 
-      const response = await client.query({
-        query: validation.normalized,
-        format: "JSON",
-        clickhouse_settings: {
-          max_execution_time: 60,
-        },
-      });
-
-      const text = await response.text();
-      const parsed = JSON.parse(text) as unknown;
-
-      let columns: Array<{ name: string; type: string }> = [];
-      let rows: Array<Record<string, unknown>> = [];
-
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        const obj = parsed as Record<string, unknown>;
-        if (Array.isArray(obj["meta"])) {
-          columns = (obj["meta"] as unknown[]).map((col: unknown) => {
-            if (
-              typeof col === "object" &&
-              col !== null &&
-              "name" in col &&
-              "type" in col
-            ) {
-              return {
-                name: String((col as Record<string, unknown>)["name"]),
-                type: String((col as Record<string, unknown>)["type"]),
-              };
-            }
-            return { name: "", type: "" };
-          });
-        }
-        if (Array.isArray(obj["data"])) {
-          rows = obj["data"] as Array<Record<string, unknown>>;
-        }
-      }
-
-      return { columns, rows };
+      return executeQuery(client, validation.normalized, 60);
     },
 
     async queryTrusted(sql: string): Promise<QueryResult> {
-      const response = await client.query({
-        query: sql,
-        format: "JSON",
-        clickhouse_settings: {
-          max_execution_time: 120,
-        },
-      });
-
-      const text = await response.text();
-      const parsed = JSON.parse(text) as unknown;
-
-      let columns: Array<{ name: string; type: string }> = [];
-      let rows: Array<Record<string, unknown>> = [];
-
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        const obj = parsed as Record<string, unknown>;
-        if (Array.isArray(obj["meta"])) {
-          columns = (obj["meta"] as unknown[]).map((col: unknown) => {
-            if (
-              typeof col === "object" &&
-              col !== null &&
-              "name" in col &&
-              "type" in col
-            ) {
-              return {
-                name: String((col as Record<string, unknown>)["name"]),
-                type: String((col as Record<string, unknown>)["type"]),
-              };
-            }
-            return { name: "", type: "" };
-          });
-        }
-        if (Array.isArray(obj["data"])) {
-          rows = obj["data"] as Array<Record<string, unknown>>;
-        }
-      }
-
-      return { columns, rows };
+      return executeQuery(client, sql, 120);
     },
 
     async getSchema(): Promise<QueryResult> {
-      const tables = [
-        "default.osprey_execution_results",
-        "default.pds_signup_anomalies",
-        "default.url_overdispersion_results",
-        "default.account_entropy_results",
-        "default.url_cosharing_pairs",
-        "default.url_cosharing_clusters",
-        "default.url_cosharing_membership",
-      ];
-
       const allRows: Array<Record<string, unknown>> = [];
-      let schemaColumns: Array<{ name: string; type: string }> = [];
+      let schemaColumns: ReadonlyArray<{ name: string; type: string }> = [];
 
-      for (const table of tables) {
+      for (const table of SCHEMA_TABLES) {
         try {
-          const response = await client.query({
-            query: `DESCRIBE TABLE ${table}`,
-            format: "JSON",
-          });
+          const result = await executeQuery(client, `DESCRIBE TABLE ${table}`, 60);
+          const taggedRows = result.rows.map((row) => ({ ...row, table }));
+          allRows.push(...taggedRows);
 
-          const text = await response.text();
-          const parsed = JSON.parse(text) as unknown;
-
-          if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-            const obj = parsed as Record<string, unknown>;
-            if (Array.isArray(obj["data"])) {
-              const tableRows = (obj["data"] as Array<Record<string, unknown>>).map(
-                (row) => ({ ...row, table })
-              );
-              allRows.push(...tableRows);
-            }
-            if (schemaColumns.length === 0 && Array.isArray(obj["meta"])) {
-              schemaColumns = (obj["meta"] as unknown[]).map((col: unknown) => {
-                if (typeof col === "object" && col !== null && "name" in col && "type" in col) {
-                  return {
-                    name: String((col as Record<string, unknown>)["name"]),
-                    type: String((col as Record<string, unknown>)["type"]),
-                  };
-                }
-                return { name: "", type: "" };
-              });
-              schemaColumns.push({ name: "table", type: "String" });
-            }
+          if (schemaColumns.length === 0) {
+            schemaColumns = [...result.columns, { name: "table", type: "String" }];
           }
         } catch {
           // Table may not exist in this environment — skip
         }
       }
 
-      return {
-        columns: schemaColumns,
-        rows: allRows,
-      };
+      return { columns: schemaColumns, rows: allRows };
     },
   };
-}
-
-export function createClickHouseClient(
-  config: ClickHouseConnectionConfig
-): ClickHouseClient {
-  switch (config.mode) {
-    case "direct":
-      if (!config.host || !config.database || config.port === undefined) {
-        throw new Error(
-          "Direct mode requires host, port, and database configuration"
-        );
-      }
-      return createDirectClient({
-        host: config.host,
-        port: config.port,
-        username: config.username ?? "default",
-        password: config.password ?? "",
-        database: config.database,
-      });
-
-    case "ssh":
-      if (!config.sshHost || !config.dockerContainer || !config.database) {
-        throw new Error(
-          "SSH mode requires sshHost, dockerContainer, and database configuration"
-        );
-      }
-      return createSshClient({
-        sshHost: config.sshHost,
-        sshUser: config.sshUser || undefined,
-        dockerContainer: config.dockerContainer,
-        database: config.database,
-      });
-
-    default:
-      const exhaustiveCheck: never = config.mode;
-      throw new Error(`Unknown ClickHouse mode: ${exhaustiveCheck}`);
-  }
 }

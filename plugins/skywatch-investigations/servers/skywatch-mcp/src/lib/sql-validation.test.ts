@@ -2,7 +2,7 @@ import { describe, it, expect } from "bun:test";
 import { validateQuery } from "./sql-validation";
 
 describe("validateQuery", () => {
-  describe("AC1.4: Reject non-SELECT statements", () => {
+  describe("reject non-SELECT statements", () => {
     it("should reject INSERT statements", () => {
       const result = validateQuery(
         "INSERT INTO osprey_execution_results (id) VALUES (1)"
@@ -70,7 +70,7 @@ describe("validateQuery", () => {
     });
   });
 
-  describe("AC1.5: Require LIMIT clause", () => {
+  describe("require LIMIT clause", () => {
     it("should reject SELECT without LIMIT", () => {
       const result = validateQuery(
         "SELECT * FROM osprey_execution_results"
@@ -104,153 +104,75 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
+
+    it("should reject query with LIMIT but non-numeric value", () => {
+      const result = validateQuery(
+        "SELECT * FROM osprey_execution_results LIMIT foo"
+      );
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.reason).toContain("LIMIT");
+      }
+    });
   });
 
-  describe("AC1.6: Restrict table access", () => {
-    it("should reject queries targeting other tables", () => {
-      const result = validateQuery("SELECT * FROM users LIMIT 10");
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("osprey_execution_results");
-      }
-    });
-
-    it("should reject queries with different table names", () => {
-      const result = validateQuery("SELECT * FROM events LIMIT 10");
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("osprey_execution_results");
-      }
-    });
-
-    it("should accept queries targeting osprey_execution_results", () => {
+  describe("allow JOINs and UNIONs", () => {
+    it("should accept JOIN queries", () => {
       const result = validateQuery(
-        "SELECT * FROM osprey_execution_results LIMIT 10"
+        "SELECT a.* FROM osprey_execution_results a JOIN url_cosharing_clusters b ON a.did = b.did LIMIT 10"
       );
       expect(result.valid).toBe(true);
     });
 
-    it("should accept queries targeting default.osprey_execution_results", () => {
+    it("should accept LEFT JOIN queries", () => {
       const result = validateQuery(
-        "SELECT * FROM default.osprey_execution_results LIMIT 10"
+        "SELECT * FROM osprey_execution_results LEFT JOIN url_cosharing_membership ON 1=1 LIMIT 10"
       );
       expect(result.valid).toBe(true);
     });
 
-    it("should accept queries targeting pds_signup_anomalies", () => {
+    it("should accept UNION queries", () => {
       const result = validateQuery(
-        "SELECT * FROM pds_signup_anomalies LIMIT 10"
+        "SELECT did FROM osprey_execution_results UNION SELECT did FROM pds_signup_anomalies LIMIT 10"
       );
       expect(result.valid).toBe(true);
     });
 
-    it("should accept queries targeting default.pds_signup_anomalies", () => {
+    it("should accept UNION ALL queries", () => {
       const result = validateQuery(
-        "SELECT * FROM default.pds_signup_anomalies LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept case-insensitive pds_signup_anomalies", () => {
-      const result = validateQuery(
-        "SELECT * FROM PDS_SIGNUP_ANOMALIES LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting url_overdispersion_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM url_overdispersion_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.url_overdispersion_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.url_overdispersion_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting account_entropy_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM account_entropy_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.account_entropy_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.account_entropy_results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept case-insensitive url_overdispersion_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM URL_OVERDISPERSION_RESULTS LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept case-insensitive account_entropy_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM ACCOUNT_ENTROPY_RESULTS LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting url_cosharing_pairs", () => {
-      const result = validateQuery(
-        "SELECT * FROM url_cosharing_pairs LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.url_cosharing_pairs", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.url_cosharing_pairs LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting url_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM url_cosharing_clusters LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.url_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.url_cosharing_clusters LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting url_cosharing_membership", () => {
-      const result = validateQuery(
-        "SELECT * FROM url_cosharing_membership LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept queries targeting default.url_cosharing_membership", () => {
-      const result = validateQuery(
-        "SELECT * FROM default.url_cosharing_membership LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept case-insensitive url_cosharing_clusters", () => {
-      const result = validateQuery(
-        "SELECT * FROM URL_COSHARING_CLUSTERS LIMIT 10"
+        "SELECT did FROM osprey_execution_results UNION ALL SELECT did FROM pds_signup_anomalies LIMIT 10"
       );
       expect(result.valid).toBe(true);
     });
   });
 
-  describe("Case-insensitive handling", () => {
+  describe("allow any table", () => {
+    it("should accept queries targeting any table", () => {
+      const result = validateQuery("SELECT * FROM some_other_table LIMIT 10");
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept queries without FROM clause", () => {
+      const result = validateQuery("SELECT 1 LIMIT 10");
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept subqueries", () => {
+      const result = validateQuery(
+        "SELECT * FROM (SELECT did, count() as cnt FROM osprey_execution_results GROUP BY did) LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("should accept CTEs", () => {
+      const result = validateQuery(
+        "WITH active AS (SELECT did FROM osprey_execution_results) SELECT * FROM active LIMIT 10"
+      );
+      expect(result.valid).toBe(true);
+    });
+  });
+
+  describe("case-insensitive handling", () => {
     it("should accept lowercase select", () => {
       const result = validateQuery(
         "select * from osprey_execution_results limit 10"
@@ -264,23 +186,9 @@ describe("validateQuery", () => {
       );
       expect(result.valid).toBe(true);
     });
-
-    it("should accept uppercase SELECT", () => {
-      const result = validateQuery(
-        "SELECT * FROM OSPREY_EXECUTION_RESULTS LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
-
-    it("should accept mixed case default.osprey_execution_results", () => {
-      const result = validateQuery(
-        "SELECT * FROM Default.Osprey_Execution_Results LIMIT 10"
-      );
-      expect(result.valid).toBe(true);
-    });
   });
 
-  describe("Whitespace normalization", () => {
+  describe("whitespace normalization", () => {
     it("should accept query with extra spaces", () => {
       const result = validateQuery(
         "SELECT  *  FROM   osprey_execution_results   LIMIT   10"
@@ -308,7 +216,7 @@ describe("validateQuery", () => {
     });
   });
 
-  describe("Edge cases", () => {
+  describe("edge cases", () => {
     it("should reject empty query", () => {
       const result = validateQuery("");
       expect(result.valid).toBe(false);
@@ -322,14 +230,6 @@ describe("validateQuery", () => {
       expect(result.valid).toBe(false);
     });
 
-    it("should reject query without FROM clause", () => {
-      const result = validateQuery("SELECT 1 LIMIT 10");
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("FROM");
-      }
-    });
-
     it("should accept complex valid query", () => {
       const result = validateQuery(
         "SELECT col1, col2, COUNT(*) as cnt FROM osprey_execution_results WHERE col1 > 5 GROUP BY col1, col2 LIMIT 100"
@@ -337,38 +237,15 @@ describe("validateQuery", () => {
       expect(result.valid).toBe(true);
     });
 
-    it("should reject query with LIMIT but non-numeric value", () => {
+    it("should accept query with comment", () => {
       const result = validateQuery(
-        "SELECT * FROM osprey_execution_results LIMIT foo"
+        "SELECT * FROM osprey_execution_results LIMIT 10 -- this is a comment"
       );
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("LIMIT");
-      }
+      expect(result.valid).toBe(true);
     });
   });
 
-  describe("SQL injection prevention", () => {
-    it("should reject UNION queries", () => {
-      const result = validateQuery(
-        "SELECT * FROM osprey_execution_results UNION SELECT * FROM users LIMIT 10"
-      );
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("UNION");
-      }
-    });
-
-    it("should reject UNION ALL queries", () => {
-      const result = validateQuery(
-        "SELECT * FROM osprey_execution_results UNION ALL SELECT * FROM users LIMIT 10"
-      );
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("UNION");
-      }
-    });
-
+  describe("data export prevention", () => {
     it("should reject queries with semicolon (multi-statement)", () => {
       const result = validateQuery(
         "SELECT * FROM osprey_execution_results LIMIT 10; DROP TABLE users"
@@ -386,26 +263,6 @@ describe("validateQuery", () => {
       expect(result.valid).toBe(false);
       if (!result.valid) {
         expect(result.reason).toContain("semicolon");
-      }
-    });
-
-    it("should reject JOIN queries", () => {
-      const result = validateQuery(
-        "SELECT * FROM osprey_execution_results JOIN users ON 1=1 LIMIT 10"
-      );
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("JOIN");
-      }
-    });
-
-    it("should reject LEFT JOIN queries", () => {
-      const result = validateQuery(
-        "SELECT * FROM osprey_execution_results LEFT JOIN users LIMIT 10"
-      );
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.reason).toContain("JOIN");
       }
     });
 
@@ -427,13 +284,6 @@ describe("validateQuery", () => {
       if (!result.valid) {
         expect(result.reason).toContain("INTO");
       }
-    });
-
-    it("should accept query with comment without semicolon", () => {
-      const result = validateQuery(
-        "SELECT * FROM osprey_execution_results LIMIT 10 -- this is a comment"
-      );
-      expect(result.valid).toBe(true);
     });
   });
 });

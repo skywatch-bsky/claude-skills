@@ -1,5 +1,6 @@
 // pattern: Functional Core
 // Pure validation logic for SQL query constraints
+// Enforces read-only access: SELECT-only, LIMIT required, no semicolons, no INTO
 
 export type ValidationResult =
   | { valid: true; normalized: string }
@@ -19,7 +20,8 @@ export function validateQuery(sql: string): ValidationResult {
     return { valid: false, reason: "Query cannot be empty" };
   }
 
-  if (firstToken.toUpperCase() !== "SELECT") {
+  const upperFirst = firstToken.toUpperCase();
+  if (upperFirst !== "SELECT" && upperFirst !== "WITH") {
     return {
       valid: false,
       reason: `Only SELECT queries are allowed. Query starts with '${firstToken}'`,
@@ -42,57 +44,10 @@ export function validateQuery(sql: string): ValidationResult {
     };
   }
 
-  if (/\bUNION\b/i.test(upperNormalized)) {
-    return {
-      valid: false,
-      reason: "Query cannot contain UNION keyword (cross-table access not allowed)",
-    };
-  }
-
-  if (/\bJOIN\b/i.test(upperNormalized)) {
-    return {
-      valid: false,
-      reason: "Query cannot contain JOIN keyword (table joining not allowed)",
-    };
-  }
-
   if (/\bINTO\b/i.test(upperNormalized)) {
     return {
       valid: false,
       reason: "Query cannot contain INTO keyword (data export not allowed)",
-    };
-  }
-
-  const fromMatch = upperNormalized.match(/\bFROM\s+(\S+)/);
-  if (!fromMatch || !fromMatch[1]) {
-    return {
-      valid: false,
-      reason: "Query must contain a FROM clause",
-    };
-  }
-
-  const tableRef = fromMatch[1];
-  const validTables = [
-    "OSPREY_EXECUTION_RESULTS",
-    "DEFAULT.OSPREY_EXECUTION_RESULTS",
-    "PDS_SIGNUP_ANOMALIES",
-    "DEFAULT.PDS_SIGNUP_ANOMALIES",
-    "URL_OVERDISPERSION_RESULTS",
-    "DEFAULT.URL_OVERDISPERSION_RESULTS",
-    "ACCOUNT_ENTROPY_RESULTS",
-    "DEFAULT.ACCOUNT_ENTROPY_RESULTS",
-    "URL_COSHARING_PAIRS",
-    "DEFAULT.URL_COSHARING_PAIRS",
-    "URL_COSHARING_CLUSTERS",
-    "DEFAULT.URL_COSHARING_CLUSTERS",
-    "URL_COSHARING_MEMBERSHIP",
-    "DEFAULT.URL_COSHARING_MEMBERSHIP",
-  ];
-
-  if (!validTables.includes(tableRef)) {
-    return {
-      valid: false,
-      reason: `Query can only target allowed tables (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership), but targets '${tableRef}'`,
     };
   }
 
