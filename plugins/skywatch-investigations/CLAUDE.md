@@ -55,7 +55,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
 - All Ozone tools require explicit credentials — fail gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
-- Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
+- Investigation reports follow B-I-N-D-Ts format (Bottom Line, Impact, Next Steps, Details, Timestamps)
 - **Ozone internals (Phase 1):** Reusable helpers are exported (`validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, `ozoneRequest`) to support read and write tools. `ozone_label` handler uses these helpers with zero behaviour change.
 - **Ozone write tools (Phase 3):** All 7 write tools use the `emitOzoneEvent` helper to emit proper event payloads via Ozone `emitEvent` API. Each tool enforces required fields: `ozone_tag` requires at least one of add/remove; `ozone_resolve_appeal` requires comment.
 - All Ozone write tools include modTool metadata (`name: "skywatch-mcp"`, batchId) for traceability
@@ -69,7 +69,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 ## Dependencies
 
-- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
+- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url/quote_overdispersion_results, account_entropy_results, url/quote_cosharing_pairs/clusters/membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Does NOT overlap with osprey-rules plugin (rule writing) or osprey-rule-investigator (rule project analysis). The `accessing-osprey` skill provides context about the Osprey system but directs users to osprey-rules for rule authoring.
 
@@ -127,6 +127,6 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - Investigator never writes queries directly; if you see it writing SQL, something is wrong
 - Co-sharing tools use `queryTrusted` (bypasses SQL validator) — the queries are built server-side with sanitised inputs, not user-supplied SQL
 - `clickhouse_query` allows JOINs, UNIONs, CTEs, and any table — the only restrictions are read-only (SELECT/WITH), LIMIT required, no semicolons, no INTO
-- `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that window return no results
-- `url_cosharing_clusters` has no TTL — cluster-level data is retained indefinitely
+- `url_cosharing_pairs`, `url_cosharing_membership`, `quote_cosharing_pairs`, and `quote_cosharing_membership` have 7-day TTL — queries beyond that window return no results
+- `url_cosharing_clusters` and `quote_cosharing_clusters` have no TTL — cluster-level data is retained indefinitely
 - Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code

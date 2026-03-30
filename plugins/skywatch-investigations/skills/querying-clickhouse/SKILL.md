@@ -35,11 +35,15 @@ Queries must start with SELECT or WITH (for CTEs). JOINs, UNIONs, subqueries, an
 Key investigation tables:
 - `default.osprey_execution_results` — Osprey rule execution history
 - `default.pds_signup_anomalies` — PDS signup rate anomalies
-- `default.url_overdispersion_results` — Coordinated domain sharing anomalies
+- `default.url_overdispersion_results` — Coordinated domain/URL sharing anomalies
 - `default.account_entropy_results` — Bot-like posting pattern detection
-- `default.url_cosharing_pairs` — Daily account co-sharing pairs (TTL 7 days)
-- `default.url_cosharing_clusters` — Cluster-level metrics and evolution (no TTL)
-- `default.url_cosharing_membership` — Daily cluster membership snapshots (TTL 7 days)
+- `default.url_cosharing_pairs` — Daily account URL co-sharing pairs (TTL 7 days)
+- `default.url_cosharing_clusters` — URL co-sharing cluster metrics and evolution (no TTL)
+- `default.url_cosharing_membership` — Daily URL co-sharing cluster membership (TTL 7 days)
+- `default.quote_cosharing_pairs` — Daily account quote co-sharing pairs (TTL 7 days)
+- `default.quote_cosharing_clusters` — Quote co-sharing cluster metrics and evolution (no TTL)
+- `default.quote_cosharing_membership` — Daily quote co-sharing cluster membership (TTL 7 days)
+- `default.quote_overdispersion_results` — Coordinated quote-post anomalies
 
 ```sql
 -- All valid
@@ -250,7 +254,7 @@ See `references/common-queries.md` for patterns:
 
 Query co-sharing data to identify coordinated URL sharing networks. Three tables available, with dedicated MCP tools for common patterns.
 
-**Preferred approach:** Use the dedicated MCP tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) which handle JOINs internally. Use `clickhouse_query` only for ad-hoc single-table queries against co-sharing data.
+**Preferred approach:** Use the dedicated MCP tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) which handle JOINs internally. Use `clickhouse_query` for ad-hoc queries or cross-table analysis.
 
 See `references/common-queries.md` for patterns:
 - Find clusters containing a DID (via tool)
@@ -265,6 +269,63 @@ See `references/common-queries.md` for patterns:
 - Pairs are stored with `account_a < account_b` — query both columns when looking up a DID
 - Tight `temporal_spread_hours` + regular `mean_posting_interval_seconds` = strong coordination signal
 - Low `unique_urls` / `member_count` ratio = likely coordinated content
+
+### Quote Co-Sharing Queries
+
+Query quote co-sharing data to identify coordinated quote-post networks. Same structure as URL co-sharing but tracks accounts that quote the same posts rather than share the same URLs. Three tables mirror the URL co-sharing schema.
+
+| Table | Key Columns | Notes |
+|-------|-------------|-------|
+| `quote_cosharing_pairs` | `date`, `account_a`, `account_b`, `weight`, `shared_uris` | TTL 7 days. `shared_uris` are AT-URIs of quoted posts |
+| `quote_cosharing_clusters` | `run_date`, `cluster_id`, `member_count`, `unique_uris`, `evolution_type` | No TTL. `sample_uris` are AT-URIs |
+| `quote_cosharing_membership` | `run_date`, `cluster_id`, `did` | TTL 7 days |
+
+**Key differences from URL co-sharing:**
+- Column names use `uris` not `urls` (e.g., `shared_uris`, `unique_uris`, `sample_uris`) — these are AT-URIs pointing to quoted posts, not web URLs
+- Detects coordinated quote-post amplification (pile-ons, brigading, astroturfing via quotes)
+- Cross-reference with `url_cosharing_*` tables to find accounts that coordinate across both sharing and quoting
+
+```sql
+-- Find accounts that appear in both URL and quote co-sharing on the same day
+SELECT u.account_a, u.account_b, u.weight as url_weight, q.weight as quote_weight
+FROM default.url_cosharing_pairs u
+JOIN default.quote_cosharing_pairs q
+  ON u.account_a = q.account_a AND u.account_b = q.account_b AND u.date = q.date
+WHERE u.date = yesterday()
+ORDER BY url_weight + quote_weight DESC
+LIMIT 50
+```
+
+### Quote Overdispersion Queries
+
+Query `quote_overdispersion_results` to identify posts being quoted at statistically anomalous rates — potential targets of coordinated quote-post campaigns.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_timestamp` | DateTime64(3) | When the analysis ran |
+| `granularity` | Enum ('hourly', 'daily') | Analysis time bucket |
+| `quoted_uri` | String | AT-URI of the quoted post |
+| `quoted_author_did` | String | DID of the post's author |
+| `bucket_start` | DateTime64(3) | Start of the analysis window |
+| `total_shares` | UInt64 | Total quote-posts of this URI |
+| `unique_sharers` | UInt64 | Distinct accounts quoting |
+| `sharer_density` | Float64 | Unique sharers / total shares |
+| `volume_p_value` | Float64 | Statistical significance of volume spike |
+| `density_p_value` | Float64 | Statistical significance of density spike |
+| `is_anomaly` | UInt8 | 1 if statistically anomalous |
+| `baseline_source` | Enum ('entity', 'population') | Whether baseline is per-author or global |
+| `sample_dids` | Array(String) | Sample of accounts doing the quoting |
+
+```sql
+-- Find posts being anomalously quote-piled today
+SELECT quoted_uri, quoted_author_did, total_shares, unique_sharers,
+       volume_p_value, density_p_value, sample_dids
+FROM default.quote_overdispersion_results
+WHERE is_anomaly = 1
+  AND bucket_start > now() - interval 1 day
+ORDER BY total_shares DESC
+LIMIT 50
+```
 
 ## Column Quick Reference
 
@@ -322,3 +383,5 @@ NULL values in columns like `follower_count` or `post_count` indicate data was u
 - Use Rule Performance queries to optimize rule definitions
 - Use Account Entropy queries to detect bot-like accounts
 - Use URL Overdispersion queries to detect coordinated domain sharing campaigns
+- Use Quote Co-Sharing queries to detect coordinated quote-post networks
+- Use Quote Overdispersion queries to detect pile-on and brigading campaigns

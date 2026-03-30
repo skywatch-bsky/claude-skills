@@ -88,7 +88,29 @@ Key columns: `cluster_id` (stable ID), `member_count`, `evolution_type` (birth/d
 
 Runs daily. Minimum 3 accounts per cluster, minimum 2 co-shares per edge, minimum 3 accounts sharing a URL before it qualifies.
 
-**Dedicated MCP tools:** Use `cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution` for structured access (these support JOINs across the three tables internally). Use `clickhouse_query` for ad-hoc single-table queries.
+**Dedicated MCP tools:** Use `cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution` for structured access (these support JOINs across the three tables internally). Use `clickhouse_query` for ad-hoc queries.
+
+### Quote Co-Sharing Sidecar
+
+**Tables:** `quote_cosharing_pairs`, `quote_cosharing_clusters`, `quote_cosharing_membership`
+**Purpose:** Detect coordinated quote-post amplification by finding clusters of accounts that repeatedly quote the same posts on the same day.
+
+Same architecture as URL co-sharing but tracks quote-posts instead of URL shares. Builds a weighted graph where edge weight = number of co-quoted AT-URIs, runs Leiden community detection, and tracks cluster evolution.
+
+- **Pairs** (`quote_cosharing_pairs`) — daily account pairs with co-quoted posts. Uses `shared_uris` (AT-URIs). TTL 7 days.
+- **Clusters** (`quote_cosharing_clusters`) — cluster-level metrics. Uses `unique_uris` and `sample_uris` (AT-URIs). No TTL.
+- **Membership** (`quote_cosharing_membership`) — daily membership snapshots. TTL 7 days.
+
+Detects pile-ons, brigading, and astroturfing via coordinated quoting. Cross-reference with `url_cosharing_*` to find accounts coordinating across both sharing and quoting.
+
+### Quote Overdispersion Sidecar
+
+**Table:** `quote_overdispersion_results`
+**Purpose:** Detect posts being quoted at statistically anomalous rates — potential targets of coordinated quote-post campaigns.
+
+Same statistical approach as URL overdispersion but applied to quote-posts. Tracks by `quoted_uri` (AT-URI) and `quoted_author_did`. Produces both hourly and daily results.
+
+Key columns: `quoted_uri`, `quoted_author_did`, `granularity`, `total_shares`, `unique_sharers`, `sharer_density`, `volume_p_value`, `density_p_value`, `is_anomaly`, `baseline_source`, `sample_dids`.
 
 ### PDS Signup Anomaly Sidecar
 
@@ -117,17 +139,19 @@ The MCP server connects directly to a ClickHouse server. Requires:
 
 ### Queryable Tables
 
-Seven tables are available for investigation queries:
-
 | Table | Source | Purpose |
 |-------|--------|---------|
 | `default.osprey_execution_results` | Osprey rule engine | Rule execution history |
 | `default.pds_signup_anomalies` | Signup anomaly sidecar | PDS signup rate anomalies |
 | `default.url_overdispersion_results` | URL overdispersion sidecar | Coordinated domain sharing anomalies |
 | `default.account_entropy_results` | Account entropy sidecar | Bot-like posting pattern detection |
-| `default.url_cosharing_pairs` | URL co-sharing sidecar | Daily account co-sharing pairs (TTL 7 days) |
-| `default.url_cosharing_clusters` | URL co-sharing sidecar | Cluster-level metrics and evolution (no TTL) |
-| `default.url_cosharing_membership` | URL co-sharing sidecar | Daily cluster membership snapshots (TTL 7 days) |
+| `default.url_cosharing_pairs` | URL co-sharing sidecar | Daily URL co-sharing pairs (TTL 7 days) |
+| `default.url_cosharing_clusters` | URL co-sharing sidecar | URL cluster metrics and evolution (no TTL) |
+| `default.url_cosharing_membership` | URL co-sharing sidecar | Daily URL cluster membership (TTL 7 days) |
+| `default.quote_cosharing_pairs` | Quote co-sharing sidecar | Daily quote co-sharing pairs (TTL 7 days) |
+| `default.quote_cosharing_clusters` | Quote co-sharing sidecar | Quote cluster metrics and evolution (no TTL) |
+| `default.quote_cosharing_membership` | Quote co-sharing sidecar | Daily quote cluster membership (TTL 7 days) |
+| `default.quote_overdispersion_results` | Quote overdispersion sidecar | Coordinated quote-post anomalies |
 
 All tables are read-only. The MCP server enforces:
 - **SELECT/WITH only** — No INSERT, UPDATE, DELETE, DDL

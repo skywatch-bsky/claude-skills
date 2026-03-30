@@ -46,7 +46,7 @@ export async function registerClickHouseTools(
 
   server.tool(
     "clickhouse_schema",
-    "Get the column definitions (names and types) for all queryable tables: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, and url_cosharing_membership.",
+    "Get the column definitions (names and types) for all queryable tables including osprey_execution_results, pds_signup_anomalies, url/quote overdispersion_results, account_entropy_results, url/quote cosharing pairs/clusters/membership.",
     {},
     async () => {
       try {
