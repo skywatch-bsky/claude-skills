@@ -108,25 +108,12 @@ Key columns: `pds_host`, `granularity`, `observed_count`, `expected_lambda`, `p_
 
 ## ClickHouse Data Access
 
-### Connection Modes
+### Connection
 
-The MCP server supports two modes for accessing ClickHouse:
-
-**Mode 1: Direct Connection**
-
-Connect directly to a ClickHouse server. Requires:
+The MCP server connects directly to a ClickHouse server. Requires:
 - Host and port of the ClickHouse server
-- Username and password (read-only)
+- Username and password
 - Network access to the server
-
-**Mode 2: SSH Tunnel**
-
-Connect via SSH to a remote host running Docker, then query ClickHouse inside the container. Requires:
-- SSH credentials (username, password or key)
-- Remote host with ClickHouse in Docker
-- Docker container name and database name
-
-Both modes use the same query interface and return identical results.
 
 ### Queryable Tables
 
@@ -143,13 +130,13 @@ Seven tables are available for investigation queries:
 | `default.url_cosharing_membership` | URL co-sharing sidecar | Daily cluster membership snapshots (TTL 7 days) |
 
 All tables are read-only. The MCP server enforces:
-- **SELECT only** — No INSERT, UPDATE, DELETE
+- **SELECT/WITH only** — No INSERT, UPDATE, DELETE, DDL
 - **LIMIT required** — All queries must have a LIMIT clause
-- **Table restriction** — Only the seven tables listed above may be queried
+- **No semicolons** — Multi-statement execution not allowed
+- **No INTO** — Data export not allowed
 - **Timeout** — Queries that run longer than 60 seconds are cancelled
-- **No JOINs** — via `clickhouse_query`. Use `cosharing_clusters`/`cosharing_pairs`/`cosharing_evolution` tools for queries that need to join co-sharing tables
 
-These constraints are enforced at the MCP layer before queries reach ClickHouse.
+JOINs, UNIONs, CTEs, subqueries, and any table are allowed. These constraints are enforced at the MCP layer before queries reach ClickHouse.
 
 ### Query Tool
 

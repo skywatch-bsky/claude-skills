@@ -4,9 +4,7 @@
       "command": "npx",
       "args": ["tsx", "${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp/src/index.ts"],
       "cwd": "${CLAUDE_PLUGIN_ROOT}",
-      "env": {
-        "CLICKHOUSE_MODE": "ssh"
-      }
+      "env": {}
     }
   }
 }

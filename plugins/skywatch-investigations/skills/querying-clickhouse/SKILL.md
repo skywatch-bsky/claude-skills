@@ -28,9 +28,11 @@ SELECT ... FROM default.osprey_execution_results WHERE ... LIMIT 100
 SELECT ... FROM default.osprey_execution_results WHERE ...
 ```
 
-**Table Restriction**
+**Read-Only Enforcement**
 
-Only the following tables may be queried:
+Queries must start with SELECT or WITH (for CTEs). JOINs, UNIONs, subqueries, and any table are allowed. Semicolons and INTO are blocked to prevent multi-statement execution and data export.
+
+Key investigation tables:
 - `default.osprey_execution_results` — Osprey rule execution history
 - `default.pds_signup_anomalies` — PDS signup rate anomalies
 - `default.url_overdispersion_results` — Coordinated domain sharing anomalies
@@ -39,19 +41,18 @@ Only the following tables may be queried:
 - `default.url_cosharing_clusters` — Cluster-level metrics and evolution (no TTL)
 - `default.url_cosharing_membership` — Daily cluster membership snapshots (TTL 7 days)
 
-Joins, subqueries targeting other tables, and cross-database queries are blocked.
-
-**Note:** For co-sharing queries that require JOINs across tables (e.g., membership → clusters), use the dedicated `cosharing_clusters`, `cosharing_pairs`, and `cosharing_evolution` MCP tools instead of `clickhouse_query`.
-
 ```sql
--- Good
+-- All valid
 SELECT * FROM default.osprey_execution_results WHERE ... LIMIT 100
-SELECT * FROM default.account_entropy_results WHERE is_bot_like = 1 LIMIT 50
-SELECT * FROM default.url_overdispersion_results WHERE is_anomaly = 1 LIMIT 50
+SELECT a.did, b.cluster_id FROM default.osprey_execution_results a
+  JOIN default.url_cosharing_membership b ON a.did = b.did LIMIT 50
+WITH flagged AS (SELECT did FROM default.account_entropy_results WHERE is_bot_like = 1)
+  SELECT * FROM default.osprey_execution_results WHERE did IN (SELECT did FROM flagged) LIMIT 100
 
--- Bad (will be rejected)
-SELECT * FROM default.osprey_execution_results o
-JOIN users u ON o.did = u.did WHERE ...
+-- Rejected
+INSERT INTO ...
+SELECT * FROM ... INTO OUTFILE ...
+SELECT * FROM ... ; DROP TABLE ...
 ```
 
 **60-Second Timeout**

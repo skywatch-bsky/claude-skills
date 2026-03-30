@@ -11,7 +11,7 @@ export async function registerClickHouseTools(
 ): Promise<void> {
   server.tool(
     "clickhouse_query",
-    "Execute a read-only SQL query against the Osprey ClickHouse database. Only SELECT queries with LIMIT against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, or url_cosharing_membership are allowed. For co-sharing analysis, prefer the dedicated cosharing_clusters/cosharing_pairs/cosharing_evolution tools which support JOINs.",
+    "Execute a read-only SQL query against the ClickHouse database. SELECT and WITH (CTEs) are allowed. JOINs, UNIONs, subqueries, and any table are permitted. Queries must include a LIMIT clause. For pre-built co-sharing analysis, see the dedicated cosharing_clusters/cosharing_pairs/cosharing_evolution tools.",
     {
       sql: z
         .string()

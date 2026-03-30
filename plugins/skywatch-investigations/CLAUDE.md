@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-03-24
+Last verified: 2026-03-29
 
 ## Purpose
 
@@ -27,7 +27,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
 - **MCP Tools** (20 total):
-  - `clickhouse_query` — Execute read-only queries against osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership
+  - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
   - `content_similarity` — Detect text similarity via ClickHouse ngramDistance
   - `cosharing_clusters` — Find URL co-sharing clusters by DID, cluster_id, date, or minimum size (supports JOINs internally)
@@ -51,8 +51,8 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
-- All ClickHouse queries via `clickhouse_query` are read-only (SELECT + LIMIT only, restricted to: osprey_execution_results, pds_signup_anomalies, url_overdispersion_results, account_entropy_results, url_cosharing_pairs, url_cosharing_clusters, url_cosharing_membership)
-- Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass the JOIN restriction for server-built queries with sanitised inputs
+- All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
+- Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
 - All Ozone tools require explicit credentials — fail gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Brief, Investigation, Notable findings, Data, Technical details)
@@ -63,7 +63,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 
 ### Expects
 
-- ClickHouse access (direct or SSH mode) configured via env vars
+- ClickHouse direct access configured via env vars (`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`)
 - Bun runtime installed for MCP server
 - Ozone credentials (optional — only for read/write tools): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
 
@@ -104,7 +104,7 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | File | Purpose |
 |------|---------|
 | `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.15.0, metadata) |
-| `.mcp.json` | MCP server configuration with ClickHouse/SSH env vars (Ozone env vars set via shell/settings) |
+| `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
 | `skills/accessing-osprey/SKILL.md` | Osprey system context and schema reference |
@@ -119,15 +119,14 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 ## Gotchas
 
 - MCP server requires Bun runtime — `bun` must be on PATH
-- `CLICKHOUSE_MODE` defaults to `ssh` — set to `direct` for local ClickHouse
 - Ozone tools fail gracefully without credentials (clear error message)
 - Ozone env vars (`OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`) are NOT in `.mcp.json` — set them in `~/.claude/settings.json` or `~/.zshrc` to avoid committing secrets
 - Ozone auth goes through the PDS (via `atproto-proxy` header), not directly to the Ozone service URL
 - `content_similarity` depends on ClickHouse — recon tools work independently
 - ip-api.com free tier has 45 req/min rate limit
-- SSH mode requires `SSH_HOST`, `SSH_USER`, and `SSH_DOCKER_CONTAINER` to be configured
 - Investigator never writes queries directly; if you see it writing SQL, something is wrong
 - Co-sharing tools use `queryTrusted` (bypasses SQL validator) — the queries are built server-side with sanitised inputs, not user-supplied SQL
+- `clickhouse_query` allows JOINs, UNIONs, CTEs, and any table — the only restrictions are read-only (SELECT/WITH), LIMIT required, no semicolons, no INTO
 - `url_cosharing_pairs` and `url_cosharing_membership` have 7-day TTL — queries beyond that window return no results
 - `url_cosharing_clusters` has no TTL — cluster-level data is retained indefinitely
 - Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code
