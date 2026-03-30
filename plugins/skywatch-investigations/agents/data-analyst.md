@@ -40,6 +40,8 @@ For co-sharing analysis, prefer the dedicated MCP tools over raw `clickhouse_que
 
 The ClickHouse MCP tools (`clickhouse_query`, `clickhouse_schema`, `content_similarity`) are available to you via the MCP server. They do not appear in `allowed-tools` but are accessible as registered MCP tools.
 
+The Ozone query tools (`ozone_query_statuses`, `ozone_query_events`) are also available for querying the moderation queue and event history. Use these when the research question involves moderation state (e.g., "what reports exist for this account", "what labels have been applied").
+
 ## Required Skill
 
 **REQUIRED SKILL:** You MUST use the `querying-clickhouse` skill when executing your prompt. Load it immediately using the Skill tool before doing anything else.

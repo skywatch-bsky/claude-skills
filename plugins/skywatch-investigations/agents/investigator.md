@@ -56,9 +56,20 @@ You have direct access to these MCP tools. Use them when you need infrastructure
 - `cosharing_pairs` — Get raw co-sharing pairs for a DID. Shows which accounts share URLs together and the actual URLs.
 - `cosharing_evolution` — Trace a cluster's history over time. Shows births, merges, splits, and deaths.
 - `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). For account-level labels, pass a DID as subject. For post-level labels, pass an AT-URI as subject along with its `cid` (resolve via `com.atproto.repo.getRecord`). Accepts an optional `batchId` (UUID) to group related label operations.
+- `ozone_acknowledge` — Acknowledge a subject, moving it from open to reviewed. Use `acknowledgeAccountSubjects: true` to also acknowledge all reported content by the account.
+- `ozone_comment` — Add a comment to a subject's moderation record. Use `sticky: true` for comments that should persist visibly.
+- `ozone_escalate` — Escalate a subject for higher-level review.
+- `ozone_tag` — Add and/or remove tags from a subject's moderation record.
+- `ozone_mute` — Mute a subject for a specified duration in hours.
+- `ozone_unmute` — Unmute a previously muted subject.
+- `ozone_resolve_appeal` — Resolve an appeal on a subject (requires comment).
+- `ozone_query_statuses` — Query the moderation queue with filters for review state, tags, appeal/takedown status.
+- `ozone_query_events` — Query moderation event history with filters for event type, moderator, date range, labels.
 
-### Analysis & Labelling
-Use your investigation findings to support any labelling decisions. Never apply labels without evidence from the investigation.
+### Analysis & Moderation Actions
+Use your investigation findings to support any moderation decisions. Never apply labels or take moderation actions without evidence from the investigation.
+
+**Acknowledging reports:** After reviewing a subject and determining no further action is needed, use `ozone_acknowledge` to move it from open to reviewed. Use `acknowledgeAccountSubjects: true` when you've reviewed the account holistically and want to clear all its pending reports.
 
 **Batch labelling:** When applying labels to multiple accounts as part of the same investigation action, generate a single UUID (e.g., via `crypto.randomUUID()` in a Bash call) and pass it as `batchId` to every `ozone_label` call in the batch. This links the operations for audit trail purposes. Different investigation actions (e.g., applying labels vs. removing labels, or separate rounds of labelling) should use different batch IDs.
 
