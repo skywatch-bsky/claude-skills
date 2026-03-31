@@ -86,16 +86,16 @@ Use this template for quick findings on single accounts or small issues without 
 
 ---
 
-## Cell Deep-Dive Template
+## Cluster Deep-Dive Template
 
 Use this template for comprehensive analysis of a coordinated network (5+ accounts) through all 6 investigation phases.
 
 ```markdown
-# Investigation Report: Cell Deep-Dive — [Cell identifier or case name]
+# Investigation Report: Cluster Deep-Dive — [Cluster identifier or case name]
 
 **Investigator:** [Your name]
 **Investigation Date:** [YYYY-MM-DD] (start) to [YYYY-MM-DD] (completion)
-**Report Type:** Cell Deep-Dive
+**Report Type:** Cluster Deep-Dive
 **Target(s):** Coordinated network of [N] accounts
 **Status:** Complete / Escalated
 **Conclusion:** [One-line summary - coordination evidence, network purpose, risk level]
@@ -303,17 +303,17 @@ Example:
 
 ---
 
-## Cross-Cell Template
+## Cross-Cluster Template
 
 Use this template to compare multiple coordinated networks and identify shared patterns or operators.
 
 ```markdown
-# Investigation Report: Cross-Cell Analysis — [Case name]
+# Investigation Report: Cross-Cluster Analysis — [Case name]
 
 **Investigator:** [Your name]
 **Investigation Date:** [YYYY-MM-DD]
-**Report Type:** Cross-Cell
-**Target(s):** [Cell names/identifiers being compared, e.g., "Cell-2026-A, Cell-2026-B, Cell-2026-C"]
+**Report Type:** Cross-Cluster
+**Target(s):** [Cluster names/identifiers being compared, e.g., "Cluster-2026-A, Cluster-2026-B, Cluster-2026-C"]
 **Status:** Complete
 **Conclusion:** [One-line summary of relationship - shared operator/infrastructure/tactics]
 
@@ -321,87 +321,87 @@ Use this template to compare multiple coordinated networks and identify shared p
 
 ## Bottom Line
 
-[Single sentence capturing cross-cell relationship. Example: "Three previously separate coordinated networks share infrastructure and posting tactics, suggesting a single operator or shared operational unit."]
+[Single sentence capturing cross-Cluster relationship. Example: "Three previously separate coordinated networks share infrastructure and posting tactics, suggesting a single operator or shared operational unit."]
 
 ## Impact
 
 | Metric | Value |
 |--------|-------|
-| Total cells compared | [Count] |
-| Total accounts across cells | [Count] |
+| Total Clusters compared | [Count] |
+| Total accounts across Clusters | [Count] |
 | Shared infrastructure found | Yes / No |
 | Shared tactics identified | Yes / No |
 | Hypothesised relationship | [Shared operator / Shared platform / Shared purpose / etc.] |
 | Aggregate campaign reach | [Estimated impressions] |
 | Combined risk level | Low / Medium / High |
 
-## Cell Comparison Matrix
+## Cluster Comparison Matrix
 
 ### Overview
 
-| Cell | Accounts | Shared PDS | Shared Domain | Shared ASN | Account Age | Campaign Duration | Primary Target |
+| Cluster | Accounts | Shared PDS | Shared Domain | Shared ASN | Account Age | Campaign Duration | Primary Target |
 |------|----------|-----------|---------------|-----------|------------|------------------|-----------------|
-| [Cell A] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
-| [Cell B] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
-| [Cell C] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
+| [Cluster A] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
+| [Cluster B] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
+| [Cluster C] | [N] | [Yes/No] | [Yes/No] | [Yes/No] | [Date range] | [Dates] | [Target] |
 
 ### Detailed Comparison
 
-**Cell A:**
+**Cluster A:**
 - Accounts: [List or count]
 - PDS hosts: [List]
 - Domains: [List]
 - Creation date range: [Start] to [End]
 - Primary content: [Description]
 
-**Cell B:**
+**Cluster B:**
 - Accounts: [List or count]
 - PDS hosts: [List]
 - Domains: [List]
 - Creation date range: [Start] to [End]
 - Primary content: [Description]
 
-**Cell C:** [Repeat as needed]
+**Cluster C:** [Repeat as needed]
 
 ## Shared Infrastructure Evidence
 
 **Shared PDS Hosts:**
-| PDS Host | Cells | Account Count |
+| PDS Host | Clusters | Account Count |
 |----------|-------|--------------|
-| [pds.example.com] | [Cell A, Cell B] | [N] |
+| [pds.example.com] | [Cluster A, Cluster B] | [N] |
 
 **Shared Domains:**
-| Domain | Registrar | Registrant | Cells | First Seen |
+| Domain | Registrar | Registrant | Clusters | First Seen |
 |--------|-----------|-----------|-------|-----------|
-| [example.com] | [Registrar] | [Name] | [Cell A, Cell B] | [Date] |
+| [example.com] | [Registrar] | [Name] | [Cluster A, Cluster B] | [Date] |
 
 **Shared ASN Blocks:**
-| ASN | Provider | Cells | Account Count |
+| ASN | Provider | Clusters | Account Count |
 |-----|----------|-------|---------------|
-| [ASN number] | [Provider] | [Cell A, Cell B, Cell C] | [N] |
+| [ASN number] | [Provider] | [Cluster A, Cluster B, Cluster C] | [N] |
 
 ## Shared Tactics Analysis
 
 **Content Themes:**
-- [Common theme/phrase found across cells]
+- [Common theme/phrase found across Clusters]
 - [Another common element]
 
 **Posting Patterns:**
-- Time coordination: [e.g., "All cells post within 2-hour windows on same schedule"]
-- Frequency: [e.g., "3-5 posts per account daily across all cells"]
+- Time coordination: [e.g., "All clusters post within 2-hour windows on same schedule"]
+- Frequency: [e.g., "3-5 posts per account daily across all clusters"]
 - Content format: [e.g., "80% copypasta, 20% paraphrased"]
 
 **Amplification Strategy:**
-- [Describe similarities in how each cell amplifies content]
+- [Describe similarities in how each cluster amplifies content]
 
 **Target Overlap:**
-- [Describe if cells target same accounts/topics]
+- [Describe if clusters target same accounts/topics]
 
 ## Hypothesised Relationships
 
 [Based on infrastructure and tactical overlap, describe the most likely relationships]
 
-**Possibility 1: [Single operator controlling multiple cells]**
+**Possibility 1: [Single operator controlling multiple clusters]**
 - Evidence: [List supporting signals]
 - Probability: [Low / Medium / High]
 
@@ -416,7 +416,7 @@ Use this template to compare multiple coordinated networks and identify shared p
 ## Next Steps
 
 - [ ] Apply coordination labels: [Label names] to all affected accounts
-- [ ] Escalate to [Team name] with cross-cell findings
+- [ ] Escalate to [Team name] with cross-cluster findings
 - [ ] Create/update rule to detect [Shared tactic]
 - [ ] Monitor for [Shared pattern] across network
 - [ ] [Any other recommended action]
@@ -429,29 +429,29 @@ Use this template to compare multiple coordinated networks and identify shared p
 [ASCII diagram showing shared infrastructure connections]
 
 Example:
-Cell A (30 accounts)  ──shared PDS──>  pds.example.com
+Cluster A (30 accounts)  ──shared PDS──>  pds.example.com
     |                                        |
     └─────────shared registrar provider─────┘
                                              |
-Cell B (20 accounts)  ──shared domain───>  domain.example
+Cluster B (20 accounts)  ──shared domain───>  domain.example
 ```
 
-### Cross-Cell Data Tables
+### Cross-Cluster Data Tables
 
-**Timeline of Cell Campaigns:**
+**Timeline of Cluster Campaigns:**
 ```
-2026-02-01  Cell A launches campaign
-2026-02-05  Cell B launches campaign (related topic)
+2026-02-01  Cluster A launches campaign
+2026-02-05  Cluster B launches campaign (related topic)
 2026-02-10  Coordinated amplification of shared target
-2026-02-15  Cell C appears with similar tactics
+2026-02-15  Cluster C appears with similar tactics
 ```
 
 **Engagement Comparison:**
-| Cell | Total Engagement | Avg per Post | Primary Target Engagement |
+| Cluster | Total Engagement | Avg per Post | Primary Target Engagement |
 |------|-----------------|--------------|-------------------------|
-| [Cell A] | [N] | [N] | [N] |
-| [Cell B] | [N] | [N] | [N] |
-| [Cell C] | [N] | [N] | [N] |
+| [Cluster A] | [N] | [N] | [N] |
+| [Cluster B] | [N] | [N] | [N] |
+| [Cluster C] | [N] | [N] | [N] |
 
 ### SQL Queries Used
 
@@ -472,11 +472,11 @@ Cell B (20 accounts)  ──shared domain───>  domain.example
 
 ## Timestamps
 
-- Cell A investigation completed: [Date]
-- Cell B investigation completed: [Date]
-- Cell C investigation completed: [Date]
-- Cross-cell analysis started: [Date]
-- Cross-cell analysis completed: [Date]
+- Cluster A investigation completed: [Date]
+- Cluster B investigation completed: [Date]
+- Cluster C investigation completed: [Date]
+- Cross-cluster analysis started: [Date]
+- Cross-cluster analysis completed: [Date]
 - Report authored: [Date]
 ```
 
@@ -492,7 +492,7 @@ Use this template for assessment of rule coverage against identified behaviour p
 **Investigator:** [Your name]
 **Investigation Date:** [YYYY-MM-DD]
 **Report Type:** Rule Check
-**Reference(s):** [Link to related cell or memo report if applicable]
+**Reference(s):** [Link to related cluster or memo report if applicable]
 **Status:** Complete
 **Conclusion:** [Coverage percentage and primary gaps identified]
 
@@ -665,4 +665,3 @@ WHERE account NOT IN (
 - Report authored: [Date]
 - Recommended deployment date: [Date if applicable]
 ```
-

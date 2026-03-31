@@ -165,7 +165,7 @@ The body must cover:
 
 **Report types** — When to use each:
 1. **Memo** — Quick finding, single account or small issue. Used when discovery finds something notable but not a full network.
-2. **Cell deep-dive** — Comprehensive analysis of a coordinated cluster. Used after completing all 6 investigation phases for a single cell.
+2. **Cluster deep-dive** — Comprehensive analysis of a coordinated cluster. Used after completing all 6 investigation phases for a single cell.
 3. **Cross-cell** — Comparison of multiple coordinated clusters, identifying shared infrastructure or tactics. Used when multiple cells appear related.
 4. **Rule check** — Assessment of rule coverage against known behaviour. Used after Phase 5 (Rule Validation) when the focus is on detection gaps.
 

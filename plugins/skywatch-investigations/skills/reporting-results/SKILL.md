@@ -149,7 +149,7 @@ Select the report type based on investigation scope and findings. Each type emph
 
 **File naming:** `YYYY-MM-DD-memo-{account-name}.md`
 
-### Cell Deep-Dive
+### Cluster Deep-Dive
 
 **When to use:** Comprehensive analysis of a coordinated network (5+ accounts). Complete investigation through all 6 phases for a single coordinated group.
 
@@ -160,19 +160,19 @@ Select the report type based on investigation scope and findings. Each type emph
 **Key sections:**
 - Bottom Line
 - Impact (network size, reach, temporal scope)
-- Network Summary (account count, relationships, infrastructure)
-- Coordination Evidence (content matching, temporal correlation, shared infrastructure)
-- Amplification Map (primary targets, engagement metrics, spread patterns)
-- Rule Coverage Analysis (Phase 5 findings)
 - Next Steps (labelling, rule updates, ongoing monitoring)
 - Details (full data tables, timelines, network graph)
+  - Network Summary (account count, relationships, infrastructure)
+  - Coordination Evidence (content matching, temporal correlation, shared infrastructure)
+  - Amplification Map (primary targets, engagement metrics, spread patterns)
+  - Rule Coverage Analysis (Phase 5 findings)
 - Timestamps
 
 **Length:** 3-8 pages depending on network size
 
-**File naming:** `YYYY-MM-DD-cell-{cell-identifier}.md`
+**File naming:** `YYYY-MM-DD-cluster-{cell-identifier}.md`
 
-### Cross-Cell
+### Cross-Cluster
 
 **When to use:** Comparison and analysis of multiple coordinated networks that appear related. Identifies shared tactics, infrastructure, or operators.
 
@@ -183,17 +183,17 @@ Select the report type based on investigation scope and findings. Each type emph
 **Key sections:**
 - Bottom Line
 - Impact (total accounts across cells, aggregate reach, shared targets)
-- Cell Comparison Matrix (accounts, infrastructure, tactics, timeline overlap)
-- Shared Infrastructure Evidence (domains, PDS hosts, ASN overlap)
-- Shared Tactics (common content, posting patterns, amplification strategies)
-- Hypothesised Relationships (likely operator, operational unit, or shared purpose)
 - Next Steps (coordination-level labelling, rule updates)
 - Details (comparative tables, cross-cell network graph, infrastructure map)
+  - Cell Comparison Matrix (accounts, infrastructure, tactics, timeline overlap)
+  - Shared Infrastructure Evidence (domains, PDS hosts, ASN overlap)
+  - Shared Tactics (common content, posting patterns, amplification strategies)
+  - Hypothesised Relationships (likely operator, operational unit, or shared purpose)
 - Timestamps
 
 **Length:** 4-10 pages depending on number of cells
 
-**File naming:** `YYYY-MM-DD-cross-cell-{description}.md`
+**File naming:** `YYYY-MM-DD-cross-cluster-{description}.md`
 
 ### Rule Check
 
@@ -206,11 +206,11 @@ Select the report type based on investigation scope and findings. Each type emph
 **Key sections:**
 - Bottom Line
 - Impact (accounts caught vs. missed, coverage percentage, risk of missed detection)
-- Rule Coverage Summary (coverage by rule type, accounts caught, accounts missed)
-- Gap Analysis (behaviour patterns not caught, suggested new rules)
-- Rule Recommendations (new rules, rule modifications, threshold adjustments)
 - Next Steps (rule deployment, testing, monitoring)
 - Details (rule hit tables, gap examples with SQL, query results)
+  - Rule Coverage Summary (coverage by rule type, accounts caught, accounts missed)
+  - Gap Analysis (behaviour patterns not caught, suggested new rules)
+  - Rule Recommendations (new rules, rule modifications, threshold adjustments)
 - Timestamps
 
 **Length:** 2-5 pages
@@ -328,7 +328,7 @@ Include investigation metadata at the top of every report (after B-I-N-D-Ts titl
 
 **Investigator:** [Name]
 **Investigation Date:** [YYYY-MM-DD]
-**Report Type:** [Memo / Cell Deep-Dive / Cross-Cell / Rule Check]
+**Report Type:** [Memo / Cluster Deep-Dive / Cross-Cluster / Rule Check]
 **Target(s):** [Accounts or networks analysed]
 **Status:** [In Progress / Complete / Escalated]
 **Conclusion:** [Brief summary]
@@ -401,4 +401,3 @@ Use this checklist when reviewing investigation reports before publication:
 - [ ] All recommended next steps are addressed
 - [ ] Escalation path is clear if needed
 - [ ] Follow-up actions are documented
-
