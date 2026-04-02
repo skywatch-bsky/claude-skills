@@ -59,7 +59,7 @@ You have direct access to these MCP tools. Use them when you need infrastructure
 - `cosharing_clusters` — Find URL co-sharing clusters (by DID, cluster_id, date, or min_members). Use directly for quick cluster lookups during discovery/linkage.
 - `cosharing_pairs` — Get raw co-sharing pairs for a DID. Shows which accounts share URLs together and the actual URLs.
 - `cosharing_evolution` — Trace a cluster's history over time. Shows births, merges, splits, and deaths.
-- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). For account-level labels, pass a DID as subject. For post-level labels, pass an AT-URI as subject along with its `cid` (resolve via `com.atproto.repo.getRecord`). Accepts an optional `batchId` (UUID) to group related label operations.
+- `ozone_label` — Apply or remove moderation labels (only after investigation supports the action). Pass `action: "apply"` to add a label or `action: "remove"` to negate it. For account-level labels, pass a DID as subject. For post-level labels, pass an AT-URI as subject along with its `cid` (resolve via `com.atproto.repo.getRecord`). Accepts an optional `batchId` (UUID) to group related label operations.
 - `ozone_acknowledge` — Acknowledge a subject, moving it from open to reviewed. Use `acknowledgeAccountSubjects: true` to also acknowledge all reported content by the account.
 - `ozone_comment` — Add a comment to a subject's moderation record. Use `sticky: true` for comments that should persist visibly.
 - `ozone_escalate` — Escalate a subject for higher-level review.
