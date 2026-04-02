@@ -10,7 +10,7 @@ Investigation toolkit for AT Protocol network analysis. Provides MCP tools for C
 
 Three layers — MCP server (native tool access), skills (codified methodology), agents (orchestrated workflows). The investigator agent delegates ClickHouse work to a data-analyst subagent while handling reconnaissance directly.
 
-The MCP server (`servers/skywatch-mcp/`) is a **git submodule** pointing to `git@github.com:skywatch-bsky/skywatch-mcp.git`. It is a Python (FastMCP) server managed with `uv`. See the submodule's own `CLAUDE.md` for server-specific conventions, commands, and structure.
+The MCP server is an external Python (FastMCP) package installed via `uvx` from `git@github.com:skywatch-bsky/skywatch-mcp.git`. No server source lives in this repo.
 
 ## Contracts
 
@@ -60,8 +60,7 @@ The MCP server (`servers/skywatch-mcp/`) is a **git submodule** pointing to `git
 ### Expects
 
 - ClickHouse direct access configured via env vars (`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`)
-- Python 3.12+ and `uv` installed for MCP server
-- Git submodule initialised (`git submodule update --init` after clone)
+- Python 3.12+ and `uv`/`uvx` installed for MCP server
 - Ozone credentials (optional — only for read/write tools): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
 
 ## Dependencies
@@ -108,12 +107,11 @@ The MCP server (`servers/skywatch-mcp/`) is a **git submodule** pointing to `git
 | `skills/querying-clickhouse/SKILL.md` | ClickHouse query patterns and best practices |
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
-| `servers/skywatch-mcp/` | Git submodule — Python FastMCP server (see its own CLAUDE.md) |
+| (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
 
-- MCP server is a git submodule — run `git submodule update --init` after cloning
-- MCP server requires Python 3.12+ and `uv` — `uv` must be on PATH
+- MCP server is an external package fetched via `uvx` — requires `uv` on PATH and SSH access to `github.com:skywatch-bsky/skywatch-mcp.git`
 - Ozone tools fail gracefully without credentials (clear error message)
 - Ozone env vars (`OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`) are NOT in `.mcp.json` — set them in `~/.claude/settings.json` or `~/.zshrc` to avoid committing secrets
 - Ozone auth goes through the PDS (via `atproto-proxy` header), not directly to the Ozone service URL

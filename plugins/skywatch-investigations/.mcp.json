@@ -1,13 +1,8 @@
 {
   "mcpServers": {
     "skywatch-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "--directory",
-        "${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp",
-        "skywatch-mcp"
-      ],
+      "command": "uvx",
+      "args": ["--from", "git+ssh://git@github.com/skywatch-bsky/skywatch-mcp.git", "skywatch-mcp"],
       "env": {}
     },
     "pdsx": {

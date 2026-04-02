@@ -1,3 +1,0 @@
-[submodule "plugins/skywatch-investigations/servers/skywatch-mcp"]
-	path = plugins/skywatch-investigations/servers/skywatch-mcp
-	url = git@github.com:skywatch-bsky/skywatch-mcp.git
