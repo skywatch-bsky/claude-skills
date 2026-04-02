@@ -1,10 +1,26 @@
 {
   "mcpServers": {
     "skywatch-mcp": {
-      "command": "npx",
-      "args": ["tsx", "${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp/src/index.ts"],
-      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}/servers/skywatch-mcp",
+        "skywatch-mcp"
+      ],
       "env": {}
+    },
+    "pdsx": {
+      "command": "uvx",
+      "args": ["--from", "pdsx[mcp]", "pdsx-mcp"]
+    },
+    "atproto": {
+      "command": "uvx",
+      "args": ["atproto-mcp"]
+    },
+    "pub-search": {
+      "type": "http",
+      "url": "https://pub-search-by-zzstoatzz.fastmcp.app/mcp"
     }
   }
 }

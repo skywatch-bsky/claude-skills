@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-03-29
+Last verified: 2026-04-02
 
 ## Purpose
 
@@ -10,9 +10,7 @@ Investigation toolkit for AT Protocol network analysis. Provides MCP tools for C
 
 Three layers — MCP server (native tool access), skills (codified methodology), agents (orchestrated workflows). The investigator agent delegates ClickHouse work to a data-analyst subagent while handling reconnaissance directly.
 
-**Phase 1 Refactoring (2026-03-24):** Ozone tool internals refactored to extract reusable helpers: `validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, and `ozoneRequest`. These enable future read tools and maintain zero-behaviour-change principle.
-
-**Phase 3: Write Tools (2026-03-24):** Added 7 write tools (comment, acknowledge, escalate, tag, mute, unmute, resolve_appeal) that emit moderation events via Ozone `emitEvent` API. All use the `emitOzoneEvent` helper for consistent event construction with $type, createdBy, modTool metadata, and batchId support.
+The MCP server (`servers/skywatch-mcp/`) is a **git submodule** pointing to `git@github.com:skywatch-bsky/skywatch-mcp.git`. It is a Python (FastMCP) server managed with `uv`. See the submodule's own `CLAUDE.md` for server-specific conventions, commands, and structure.
 
 ## Contracts
 
@@ -56,15 +54,14 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 - All Ozone tools require explicit credentials — fail gracefully without them
 - Data-analyst always includes SQL used in its output (reproducibility)
 - Investigation reports follow B-I-N-D-Ts format (Bottom Line, Impact, Next Steps, Details, Timestamps)
-- **Ozone internals (Phase 1):** Reusable helpers are exported (`validateOzoneConfig`, `buildSubjectRef`, `buildModTool`, `ozoneRequest`) to support read and write tools. `ozone_label` handler uses these helpers with zero behaviour change.
-- **Ozone write tools (Phase 3):** All 7 write tools use the `emitOzoneEvent` helper to emit proper event payloads via Ozone `emitEvent` API. Each tool enforces required fields: `ozone_tag` requires at least one of add/remove; `ozone_resolve_appeal` requires comment.
 - All Ozone write tools include modTool metadata (`name: "skywatch-mcp"`, batchId) for traceability
 - All Ozone write tools validate credentials before attempting API calls
 
 ### Expects
 
 - ClickHouse direct access configured via env vars (`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`)
-- Bun runtime installed for MCP server
+- Python 3.12+ and `uv` installed for MCP server
+- Git submodule initialised (`git submodule update --init` after clone)
 - Ozone credentials (optional — only for read/write tools): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
 
 ## Dependencies
@@ -111,14 +108,12 @@ Three layers — MCP server (native tool access), skills (codified methodology),
 | `skills/querying-clickhouse/SKILL.md` | ClickHouse query patterns and best practices |
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
-| `servers/skywatch-mcp/src/index.ts` | MCP server entry point |
-| `servers/skywatch-mcp/src/tools/` | Tool implementations (20 tools across 5 files) |
-| `servers/skywatch-mcp/src/tools/ozone.ts` | 10 Ozone tools (1 label, 2 query, 7 write) + helpers (validateOzoneConfig, buildSubjectRef, buildModTool, ozoneRequest, emitOzoneEvent) |
-| `servers/skywatch-mcp/src/tools/cosharing.ts` | Co-sharing cluster/pairs/evolution tools |
+| `servers/skywatch-mcp/` | Git submodule — Python FastMCP server (see its own CLAUDE.md) |
 
 ## Gotchas
 
-- MCP server requires Bun runtime — `bun` must be on PATH
+- MCP server is a git submodule — run `git submodule update --init` after cloning
+- MCP server requires Python 3.12+ and `uv` — `uv` must be on PATH
 - Ozone tools fail gracefully without credentials (clear error message)
 - Ozone env vars (`OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`) are NOT in `.mcp.json` — set them in `~/.claude/settings.json` or `~/.zshrc` to avoid committing secrets
 - Ozone auth goes through the PDS (via `atproto-proxy` header), not directly to the Ozone service URL
