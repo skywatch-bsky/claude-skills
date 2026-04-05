@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-04-02
+Last verified: 2026-04-04
 
 ## Purpose
 
@@ -20,6 +20,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `investigator` — investigation orchestrator, dispatches data-analyst for ClickHouse queries
   - `data-analyst` — focused ClickHouse query agent
 - **Skills**:
+  - `assess-account` — Structured account assessment workflow (7-phase data collection, classification schema, output formats)
   - `accessing-osprey` — Osprey system context and schema reference
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
@@ -73,6 +74,8 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | User Intent | Use |
 |-------------|-----|
+| "Profile this account quickly" | `assess-account` skill |
+| "Determine what type of account this is" | `assess-account` skill |
 | "Investigate these accounts" | `investigator` agent |
 | "Find accounts triggered by rule X" | `data-analyst` agent or `investigator` |
 | "What does the osprey schema look like?" | `accessing-osprey` skill |
@@ -103,6 +106,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
+| `skills/assess-account/SKILL.md` | Structured account assessment methodology (data collection, classification, output) |
 | `skills/accessing-osprey/SKILL.md` | Osprey system context and schema reference |
 | `skills/querying-clickhouse/SKILL.md` | ClickHouse query patterns and best practices |
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
