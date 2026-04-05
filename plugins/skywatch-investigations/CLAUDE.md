@@ -20,12 +20,14 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `investigator` — investigation orchestrator, dispatches data-analyst for ClickHouse queries
   - `data-analyst` — focused ClickHouse query agent
 - **Skills**:
-  - `assess-account` — Structured account assessment workflow (3-phase: data collection with 7 research queries, classification, output)
   - `accessing-osprey` — Osprey system context and schema reference
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
-  - `triage-rule-hits` — Rule hit triage methodology (stratified sampling, per-hit classification, aggregate rule health assessment)
+  - `assess-account` — structured account assessment with classification schema and recommendation
+  - `search-incidents` — topic-based incident search with relevance scoring and content classification
+  - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
+  - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -75,15 +77,12 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | User Intent | Use |
 |-------------|-----|
-| "Profile this account quickly" | `assess-account` skill |
-| "Determine what type of account this is" | `assess-account` skill |
 | "Investigate these accounts" | `investigator` agent |
 | "Find accounts triggered by rule X" | `data-analyst` agent or `investigator` |
 | "What does the osprey schema look like?" | `accessing-osprey` skill |
 | "How do I query ClickHouse effectively?" | `querying-clickhouse` skill |
 | "Conduct a full investigation" | `investigator` agent (loads methodology automatically) |
 | "Write a report on these findings" | `reporting-results` skill |
-| "Triage a rule's performance and health" | `triage-rule-hits` skill |
 | "Check if this account is a bot" | `data-analyst` agent (query `account_entropy_results`) |
 | "Find coordinated domain sharing" | `data-analyst` agent (query `url_overdispersion_results`) |
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
@@ -99,6 +98,10 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | "Mute this subject" | `ozone_mute` tool |
 | "Unmute this subject" | `ozone_unmute` tool |
 | "Resolve this appeal" | `ozone_resolve_appeal` tool |
+| "Assess this account" | `assess-account` skill (standalone) or `investigator` agent |
+| "Search for incidents about X" | `search-incidents` skill (standalone) or `investigator` agent |
+| "Triage rule hits for rule X" | `triage-rule-hits` skill (standalone) or `investigator` agent |
+| "Classify this cluster" | `classify-cluster` skill (standalone) or `investigator` agent |
 
 ## Key Files
 
@@ -114,6 +117,8 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
 | `skills/triage-rule-hits/SKILL.md` | Rule hit triage methodology (sampling, classification, health assessment) |
+| `skills/search-incidents/SKILL.md` | Topic-based incident search methodology |
+| `skills/classify-cluster/SKILL.md` | Co-sharing cluster classification methodology |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
