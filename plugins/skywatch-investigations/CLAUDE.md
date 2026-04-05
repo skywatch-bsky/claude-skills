@@ -53,6 +53,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
+- Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits) on-demand at the relevant investigation phase — never pre-loaded
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
 - All Ozone tools require explicit credentials — fail gracefully without them
@@ -107,7 +108,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.15.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.16.3, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
