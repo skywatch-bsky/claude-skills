@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-04-02
+Last verified: 2026-04-04
 
 ## Purpose
 
@@ -24,6 +24,10 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
+  - `assess-account` — structured account assessment with classification schema and recommendation
+  - `search-incidents` — topic-based incident search with relevance scoring and content classification
+  - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
+  - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -49,6 +53,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
+- Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits) on-demand at the relevant investigation phase — never pre-loaded
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
 - All Ozone tools require explicit credentials — fail gracefully without them
@@ -94,19 +99,27 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | "Mute this subject" | `ozone_mute` tool |
 | "Unmute this subject" | `ozone_unmute` tool |
 | "Resolve this appeal" | `ozone_resolve_appeal` tool |
+| "Assess this account" | `assess-account` skill (standalone) or `investigator` agent |
+| "Search for incidents about X" | `search-incidents` skill (standalone) or `investigator` agent |
+| "Triage rule hits for rule X" | `triage-rule-hits` skill (standalone) or `investigator` agent |
+| "Classify this cluster" | `classify-cluster` skill (standalone) or `investigator` agent |
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.15.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.16.3, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
+| `skills/assess-account/SKILL.md` | Structured account assessment methodology (data collection, classification, output) |
 | `skills/accessing-osprey/SKILL.md` | Osprey system context and schema reference |
 | `skills/querying-clickhouse/SKILL.md` | ClickHouse query patterns and best practices |
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
+| `skills/triage-rule-hits/SKILL.md` | Rule hit triage methodology (sampling, classification, health assessment) |
+| `skills/search-incidents/SKILL.md` | Topic-based incident search methodology |
+| `skills/classify-cluster/SKILL.md` | Co-sharing cluster classification methodology |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
