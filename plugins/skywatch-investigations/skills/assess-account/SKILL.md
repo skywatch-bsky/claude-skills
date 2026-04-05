@@ -79,3 +79,122 @@ Use `domain_check` directly on any unusual PDS hosts identified.
 ### Handling Missing Data
 
 Some queries may return no results (new accounts, accounts with no rule hits, accounts not in entropy results). This is expected — proceed with available data and flag gaps in the Classification phase. An account with minimal data produces a low-confidence assessment, not an error.
+
+## Phase 2: Classification
+
+Apply the following schema to the collected data. Every field must be populated — use "unknown" or "insufficient_data" when data is unavailable rather than guessing.
+
+### Classification Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `account_type` | enum | `genuine`, `bot`, `io_suspected`, `scam`, `spam`, `hybrid`, `insufficient_data` |
+| `confidence` | enum | `high`, `medium`, `low` |
+| `signals` | list | Evidence items supporting the classification (see Signal Catalogue below) |
+| `topic_breakdown` | map | Topic -> percentage of content (e.g., `{"politics/elections": 70, "sports": 20, "other": 10}`) |
+| `language_profile` | map | Language -> percentage (e.g., `{"en": 85, "pt": 15}`) |
+| `narrative_alignment` | string | Summary of dominant narrative(s) the account pushes, or "varied/no dominant narrative" |
+| `recommendation` | enum | `no_action`, `monitor`, `escalate`, `label`, `label_and_escalate` |
+
+### Signal Catalogue
+
+Classify by evaluating signals from each category. An account may exhibit signals from multiple categories — `hybrid` captures accounts showing mixed patterns.
+
+#### Bot Signals
+- **High hourly entropy** (>= 3.9): Posts are distributed too evenly across hours — genuine accounts have natural peaks and quiet periods
+- **Low interval entropy** (<= 1.5): Time between posts is suspiciously regular — genuine accounts have variable intervals
+- **is_bot_like flag**: Set by the entropy analysis pipeline when both thresholds are met
+- **Templated content**: Posts follow repeating patterns with variable substitution (e.g., same structure, different URLs)
+- **No engagement variation**: Consistent posting rate with no response to external events
+
+#### IO (Information Operation) Signals
+- **Single-topic concentration**: 70%+ of content focused on one political or social topic
+- **Cluster membership**: Account belongs to a co-sharing cluster (URL or quote)
+- **Narrative alignment**: Content pushes a consistent narrative across posts, especially if aligned with known state-linked messaging
+- **Coordinated timing**: Posting times correlate with other accounts in the same cluster
+- **New account + high activity**: Account created recently but posting at high volume on a single topic
+- **State-aligned sources**: Shares domains associated with state media or known propaganda outlets
+
+#### Scam Signals
+- **Fundraising patterns**: Posts soliciting donations, cryptocurrency, or financial transactions
+- **Urgency framing**: Language emphasising immediate action ("act now", "limited time", "don't miss out")
+- **Impersonation indicators**: Profile mimics a known entity (similar handle, copied bio/avatar)
+- **Suspicious URLs**: Shortened URLs, domains registered recently, or domains flagged by overdispersion analysis
+
+#### Spam Signals
+- **Commercial URLs**: Links to commercial products, affiliate marketing, or ad-heavy sites
+- **Template repetition**: Same message posted repeatedly with minor variations
+- **High volume, low engagement**: Many posts but minimal genuine interaction
+
+#### Genuine Signals
+- **Varied topics**: Content spans multiple unrelated topics
+- **Organic engagement**: Mix of original posts, replies, reposts with natural variation
+- **Established account**: Account age > 6 months with consistent but varied activity
+- **Natural temporal patterns**: Normal hourly entropy (< 3.9) and interval entropy (> 1.5)
+- **Diverse sources**: Links to varied domains, not concentrated on a few
+
+### Confidence Determination
+
+| Confidence | Criteria |
+|------------|----------|
+| **high** | 3+ strong signals from one category, no contradicting signals from another |
+| **medium** | 2+ signals from one category, or mixed signals that lean one direction |
+| **low** | Fewer than 2 signals, contradicting signals across categories, or insufficient data |
+
+### Recommendation Mapping
+
+| account_type | Default Recommendation | Override Conditions |
+|-------------|----------------------|-------------------|
+| `genuine` | `no_action` | If in a co-sharing cluster: `monitor` |
+| `bot` | `label` | If high-volume + harmful content: `label_and_escalate` |
+| `io_suspected` | `escalate` | If strong evidence (high confidence): `label_and_escalate` |
+| `scam` | `label_and_escalate` | — |
+| `spam` | `label` | If part of a network: `label_and_escalate` |
+| `hybrid` | `monitor` | Escalate if any component is scam or IO |
+| `insufficient_data` | `monitor` | — |
+
+## Phase 3: Output
+
+### Default: Structured Assessment
+
+Present the assessment using this format:
+
+```
+## Account Assessment: [DID or handle]
+
+**Account Type:** [account_type] ([confidence] confidence)
+**Recommendation:** [recommendation]
+
+### Signals
+- [signal 1 — brief evidence note]
+- [signal 2 — brief evidence note]
+- [signal 3 — brief evidence note]
+
+### Topic Breakdown
+| Topic | % |
+|-------|---|
+| [topic] | [%] |
+
+### Language Profile
+| Language | % |
+|----------|---|
+| [lang] | [%] |
+
+### Narrative Alignment
+[narrative_alignment summary]
+
+### Data Gaps
+[List any queries that returned no results and how they affected confidence]
+```
+
+### On Request: B-I-N-D-Ts Report
+
+When a full report is requested, load the `reporting-results` skill and produce a report using the structured assessment as source material:
+
+- **Bottom Line:** Account type + confidence + recommendation in one sentence
+- **Impact:** Posting volume, reach indicators, cluster membership, rule hit counts
+- **Next Steps:** Specific actions based on recommendation (monitor, label with which label, escalate to whom)
+- **Details:** Full evidence trail from all 7 data collection categories
+- **Timestamps:** Data collection time range, assessment timestamp
+
+Select the **memo** report type for individual account assessments. Use **cell deep-dive** if the account is part of a larger network being investigated.
