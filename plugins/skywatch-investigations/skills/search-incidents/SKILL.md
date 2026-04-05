@@ -72,3 +72,98 @@ If the content search returns no results:
 1. Report: "No content matching [topic] found in the specified time range."
 2. Suggest broadening: expand the time range, loosen keyword matching, or try alternate terms from the keyword strategy
 3. Do NOT attempt classification on empty results — return the empty result with the explanation
+
+## Phase 3: Classification
+
+Classify each result from the content search. Apply the schema to every returned post.
+
+### Per-Result Classification Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `relevance` | integer 1-10 | How relevant this post is to the search topic (10 = directly about the incident) |
+| `content_type` | enum | `incident_report`, `commentary`, `news_aggregation`, `historical_reference`, `unrelated` |
+| `incident_confirmed` | enum | `confirmed`, `unconfirmed`, `denied`, `not_applicable` |
+| `geographic_focus` | string | Region/country the post references, or "unspecified" |
+| `key_details` | string | Brief extraction of factual claims (location, date, numbers) |
+| `source_type` | enum | `firsthand`, `secondhand`, `media_repost`, `opinion`, `unknown` |
+
+### Content Type Criteria
+
+| Type | Identifying Features |
+|------|---------------------|
+| **incident_report** | Specific location, time, and event details. Present tense or recent past tense. Claims direct knowledge or cites a primary source. Includes specifics (numbers, names, places). |
+| **commentary** | General statements about the topic. Opinion language ("I think", "this shows", "we should"). References the incident but adds interpretation rather than facts. |
+| **news_aggregation** | Reposted headline or article link. Content is from a news source, not original observation. Often includes the source name or URL. |
+| **historical_reference** | References a past incident, not a current one. Uses past tense, comparative language ("like the time when", "similar to the [year] incident"). |
+| **unrelated** | Matched keywords but is about a different topic entirely. False positive from keyword overlap. |
+
+### Relevance Scoring Guide
+
+| Score | Criteria |
+|-------|----------|
+| **9-10** | Directly about the searched incident. Contains specific, verifiable details. |
+| **7-8** | Clearly related. Discusses the incident but with fewer specifics or from a secondary perspective. |
+| **5-6** | Tangentially related. Mentions the topic in passing or discusses the broader context. |
+| **3-4** | Weakly related. Keyword match but limited topical overlap. |
+| **1-2** | Barely related. Likely a false positive from keyword matching. |
+
+### Minimum Relevance Threshold
+
+Filter results to relevance >= 5 before producing output. Results scoring 1-4 are excluded from the final output but noted in the summary: "N results excluded (relevance < 5)".
+
+## Phase 4: Output
+
+### Default: Structured Search Results
+
+Present results using this format:
+
+```
+## Incident Search: [topic]
+
+**Keyword Strategy:** [core terms] + [N expanded terms]
+**Time Range:** [range searched]
+**Total Results:** [N] (after filtering; [M] excluded below relevance threshold)
+
+### Results by Region
+
+#### [Region 1] ([N] results)
+
+| # | Relevance | Type | Confirmed | Author | Key Details | Date |
+|---|-----------|------|-----------|--------|-------------|------|
+| 1 | 9 | incident_report | confirmed | [DID] | [key_details] | [date] |
+| 2 | 8 | commentary | n/a | [DID] | [key_details] | [date] |
+
+#### [Region 2] ([N] results)
+...
+
+#### Unspecified Region ([N] results)
+...
+
+### Top Accounts
+
+| Account | Posts on Topic | In Co-sharing Cluster | Earliest | Latest |
+|---------|---------------|----------------------|----------|--------|
+| [DID] | [count] | [yes/no] | [date] | [date] |
+
+### Regional Breakdown
+
+| Region | Result Count | Incident Reports | Commentary | News | Historical |
+|--------|-------------|-----------------|------------|------|------------|
+| [region] | [n] | [n] | [n] | [n] | [n] |
+
+### Temporal Spikes
+[List any days with 2x+ average volume, with date and count]
+```
+
+### On Request: B-I-N-D-Ts Report
+
+When a full report is requested, load the `reporting-results` skill and produce a report:
+
+- **Bottom Line:** What the search found — incident confirmed/unconfirmed, scale, geographic spread
+- **Impact:** Total posts, unique accounts, temporal span, engagement reach
+- **Next Steps:** Accounts to investigate further, keywords to monitor, rules to check/create
+- **Details:** Full classified results with evidence
+- **Timestamps:** Search time range, classification timestamp
+
+Select the **memo** report type for topic searches. Use **cross-cell** if the search reveals multiple distinct clusters or networks.
