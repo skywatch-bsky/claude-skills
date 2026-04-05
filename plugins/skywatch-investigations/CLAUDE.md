@@ -25,6 +25,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
   - `reporting-results` — report structure, formatting, and presentation
+  - `triage-rule-hits` — Rule hit triage methodology (stratified sampling, per-hit classification, aggregate rule health assessment)
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -82,6 +83,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | "How do I query ClickHouse effectively?" | `querying-clickhouse` skill |
 | "Conduct a full investigation" | `investigator` agent (loads methodology automatically) |
 | "Write a report on these findings" | `reporting-results` skill |
+| "Triage a rule's performance and health" | `triage-rule-hits` skill |
 | "Check if this account is a bot" | `data-analyst` agent (query `account_entropy_results`) |
 | "Find coordinated domain sharing" | `data-analyst` agent (query `url_overdispersion_results`) |
 | "Find URL co-sharing clusters" | `cosharing_clusters` tool or `data-analyst` agent |
@@ -111,6 +113,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `skills/querying-clickhouse/SKILL.md` | ClickHouse query patterns and best practices |
 | `skills/conducting-investigations/SKILL.md` | Investigation methodology and correlation techniques |
 | `skills/reporting-results/SKILL.md` | Report structure, B-I-N-D-Ts format, presentation |
+| `skills/triage-rule-hits/SKILL.md` | Rule hit triage methodology (sampling, classification, health assessment) |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
