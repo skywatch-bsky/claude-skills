@@ -20,7 +20,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `investigator` — investigation orchestrator, dispatches data-analyst for ClickHouse queries
   - `data-analyst` — focused ClickHouse query agent
 - **Skills**:
-  - `assess-account` — Structured account assessment workflow (7-phase data collection, classification schema, output formats)
+  - `assess-account` — Structured account assessment workflow (3-phase: data collection with 7 research queries, classification, output)
   - `accessing-osprey` — Osprey system context and schema reference
   - `querying-clickhouse` — ClickHouse query patterns and best practices
   - `conducting-investigations` — investigation methodology (reconnaissance, correlation, analysis)
