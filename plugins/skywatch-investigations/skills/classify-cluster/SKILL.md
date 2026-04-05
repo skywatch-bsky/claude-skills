@@ -68,3 +68,117 @@ If the cluster has 1 member or fewer than 3 members:
 
 **Dispatch to data-analyst:**
 "From the co-sharing pairs data, extract all unique domains/URLs shared across cluster members. Group by domain and show: domain, number of members sharing it, total share count, and whether it appears in url_overdispersion_results."
+
+## Phase 2: Classification
+
+### Classification Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `dominant_narratives` | list of {narrative, prevalence} | Top narratives pushed by cluster members, with % of members participating |
+| `coordination_signals` | list | Evidence of coordination beyond URL sharing (see Signal Catalogue) |
+| `language_distribution` | map | Language -> % of cluster content |
+| `shared_sources` | list of {domain, member_count, total_shares, is_anomalous} | Domains/URLs shared across members |
+| `likely_origin` | enum | `io_suspected`, `spam_network`, `organic_interest`, `mixed`, `undetermined` |
+| `confidence` | enum | `high`, `medium`, `low` |
+| `member_roles` | map | DID -> role (e.g., `amplifier`, `content_creator`, `bridge_account`) |
+
+### Signal Catalogue
+
+#### IO Indicators
+- **Single narrative dominance**: 70%+ of cluster content focused on one political or social narrative
+- **High content similarity**: Posts across members use similar or identical phrasing (check via `content_similarity` tool)
+- **Temporal clustering**: Members post within narrow time windows of each other
+- **State-aligned sources**: Shared domains associated with state media, government outlets, or known propaganda sources
+- **Bot-like entropy**: Multiple members flagged as bot-like (is_bot_like = true)
+- **New accounts**: Majority of members created recently (< 3 months of activity)
+- **Uniform behaviour**: Members show similar posting patterns (same hours, same frequency, same content types)
+
+#### Spam Indicators
+- **Commercial URLs**: Shared domains are commercial products, affiliate links, or ad-heavy sites
+- **Affiliate patterns**: URLs contain tracking parameters, referral codes, or affiliate identifiers
+- **Template content**: Posts are templated with variable substitution (same structure, different product names)
+
+#### Organic Indicators
+- **Varied topics within theme**: Members share a general interest (e.g., climate science) but post about different specific aspects
+- **Genuine engagement**: Members reply to each other, have varied follower/following ratios, post original commentary alongside shared links
+- **Established accounts**: Majority of members have 6+ months of activity with consistent but varied posting
+- **Diverse sources**: Shared domains come from multiple independent outlets, not concentrated on a few
+- **Natural temporal spread**: Posts are spread across normal waking hours with no suspicious clustering
+
+### Distinguishing IO from Organic Coordination
+
+This is the critical analytical step. Apply these questions in order:
+
+1. **Narrative diversity test**: Does the cluster share a range of perspectives on their topic, or a single uniform message? Genuine interest groups disagree and discuss; IO pushes one line.
+2. **Source diversity test**: Are shared URLs from diverse, independent outlets, or concentrated on a few (especially state-aligned) sources?
+3. **Account authenticity test**: Do member accounts have histories, varied interests, and natural posting patterns? Or are they young, single-topic, bot-like?
+4. **Temporal pattern test**: Do members post in response to real events (natural spikes), or in regular coordinated bursts regardless of external triggers?
+
+### Member Role Assignment
+
+For clusters classified as IO or spam, assign roles to members:
+- **content_creator**: Originates posts that others amplify
+- **amplifier**: Primarily reposts/quotes content from creators
+- **bridge_account**: Connects this cluster to other clusters or broader audiences
+
+## Phase 3: Output
+
+### Default: Structured Classification
+
+```
+## Cluster Classification: [cluster_id or "ad-hoc group"]
+
+### Cluster at a Glance
+| Metric | Value |
+|--------|-------|
+| Size | [N] members |
+| Age Range | [oldest] to [newest] account |
+| Language Mix | [primary language] ([%]), [secondary] ([%]) |
+| Dominant Narrative | [one-line summary] |
+| Classification | [likely_origin] ([confidence] confidence) |
+
+### Dominant Narratives
+
+| Narrative | Prevalence | Example |
+|-----------|-----------|---------|
+| [narrative summary] | [%] of members | "[example post excerpt]" |
+
+### Coordination Signals
+- [signal 1 — evidence]
+- [signal 2 — evidence]
+
+### Shared Sources
+
+| Domain | Members Sharing | Total Shares | Anomalous |
+|--------|----------------|-------------|-----------|
+| [domain] | [n] | [n] | [yes/no] |
+
+### Language Distribution
+| Language | % |
+|----------|---|
+| [lang] | [%] |
+
+### Member Roles (if IO/spam)
+
+| Role | Count | Example DIDs |
+|------|-------|-------------|
+| content_creator | [n] | [DID1], [DID2] |
+| amplifier | [n] | [DID1], [DID2] |
+| bridge_account | [n] | [DID1] |
+
+### Assessment
+[2-3 sentence analytical summary explaining the classification, key evidence, and what distinguishes this cluster from the alternative classification (i.e., why IO and not organic, or vice versa)]
+```
+
+### On Request: B-I-N-D-Ts Report
+
+When a full report is requested, load the `reporting-results` skill:
+
+- **Bottom Line:** Cluster classification + confidence + key distinguishing evidence
+- **Impact:** Cluster size, content volume, reach indicators, domains amplified
+- **Next Steps:** Accounts to label, narratives to monitor, domains to block, rules to create
+- **Details:** Full classification with member-by-member breakdown
+- **Timestamps:** Cluster formation/evolution timeline, assessment timestamp
+
+Select the **cell deep-dive** report type for single cluster analysis.
