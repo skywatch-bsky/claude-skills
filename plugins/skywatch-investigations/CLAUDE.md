@@ -29,7 +29,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
   - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
   - `querying-ozone` — Ozone MCP tool reference: query patterns, filter combinations, pagination, write tool conventions
-  - `working-the-queue` — moderation queue triage methodology: two-pass scan-classify-act workflow with policy-based recommendations
+  - `working-the-queue` — moderation queue triage methodology: two-pass scan-classify-act workflow with policy-based recommendations, post/account-level labelling, reply thread context, and subagent delegation
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -57,6 +57,10 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
 - Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits, working-the-queue) on-demand at the relevant phase — never pre-loaded
 - `working-the-queue` loads `querying-ozone` as a prerequisite and reads `.policies/` from the working directory for label/policy guidance
+- `working-the-queue` treats each reported AT-URI as a separate subject — never rolls up or deduplicates multiple reported posts from the same account
+- `working-the-queue` evaluates replies in thread context (parent post, account relationship, reporter identity) before classification
+- `working-the-queue` delegates per-subject data collection to subagents to preserve triage agent context window; subagents return recommendations with supporting evidence
+- `working-the-queue` proactively recommends account-level labels when post-level evidence reveals systemic behaviour patterns
 - When `working-the-queue` encounters ambiguous policy interpretation, it defers to the analyst and records the decision as a precedent in `.policies/precedents/`
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
@@ -118,7 +122,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.18.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.19.0, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |

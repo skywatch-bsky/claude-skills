@@ -47,9 +47,35 @@ Two parameters, both provided by the user:
 
 For each subject in the batch, gather context and produce a classification. This is the first pass — prioritise speed and coverage over depth.
 
+### Subject Granularity
+
+Moderation labels apply at both the account level and the individual post level. When the queue contains multiple reported posts from the same account, **do not roll them up or deduplicate.** Each reported post requires individual review because:
+
+- Different posts may violate different policies (or none at all)
+- A post-level label targets specific content; an account-level label reflects systemic behaviour
+- The aggregate pattern across multiple reported posts informs whether account-level action is warranted, but that is a separate decision from post-level findings
+
+Treat each reported AT-URI as its own subject. Use the account-level view (content context, moderation history) as supporting evidence for each post-level decision.
+
+However, the agent should proactively recommend account-level labels when the evidence supports it — even if only individual posts were reported. Triggers for an account-level recommendation:
+
+- Multiple reported posts from the same account show a consistent pattern of the same policy violation
+- Reviewing an individual post's content context (step 2) reveals a broader pattern of violating behaviour beyond the reported content
+- The account's rule hit history shows sustained, repeated matches against the same rules
+
+When recommending an account-level label, add it as a separate classification entry alongside the post-level entries. The analyst decides whether to apply both, one, or neither.
+
 ### Per-Subject Data Collection
 
-For each subject, gather three categories of context:
+For each subject, dispatch a subagent to gather context. The subagent collects all four categories below and returns a structured summary. This preserves the triage agent's context window for classification decisions across the full batch.
+
+**Subagent prompt pattern:**
+
+> Gather moderation context for subject [DID or AT-URI]. Collect: (1) moderation history from ozone_query_events — prior reports, labels, actions, sticky comments; (2) content context — 20 most recent posts from this DID via ClickHouse osprey_execution_results with post text, timestamps, and matched rules, plus rule hits for the past 30 days grouped by rule name with counts; (3) report details — what was reported, by whom, what reason was given; (4) if the subject is a reply, thread context — the parent post, the account being replied to, and the relationship between the accounts.
+>
+> Based on what you find, return: (a) a recommended classification (label / no_action / investigate_further / escalate / defer) with a recommended label and label level if applicable; (b) the specific evidence supporting that recommendation — key posts, rule hit patterns, moderation history, thread context. Keep the summary concise — key facts and reasoning, not raw data dumps.
+
+The subagent should use the data-analyst agent for ClickHouse queries and MCP tools directly for Ozone queries. The primary agent makes the final classification decision but uses the subagent's recommendation and evidence as input.
 
 #### 1. Moderation History
 
@@ -63,14 +89,31 @@ This reveals whether the subject is a repeat offender, has prior context, or has
 
 #### 2. Content Context
 
-Dispatch to the data-analyst agent:
-"Pull the 20 most recent posts from DID [subject_did] from osprey_execution_results. Return post text, timestamp, and any rules that matched. Also return any rule hits for this DID in the past 30 days grouped by rule name with hit counts."
+Query via data-analyst: pull the 20 most recent posts from DID [subject_did] from osprey_execution_results. Return post text, timestamp, and any rules that matched. Also return any rule hits for this DID in the past 30 days grouped by rule name with hit counts.
 
 This reveals what the account actually posts, beyond the single reported item. Pattern of behaviour matters more than any individual post.
 
 #### 3. Report Content
 
 From the `ozone_query_statuses` result, examine the report itself — what was reported, by whom, and what reason was given. Cross-reference the reported content against the broader posting context from step 2.
+
+#### 4. Reply Thread Context
+
+If the reported content is a reply, the reply MUST be evaluated in the context of its conversation before classification. A reply that looks like a policy violation in isolation may be entirely appropriate in context (or vice versa).
+
+**Required steps for replies:**
+
+1. **Pull the parent post.** Retrieve the post being replied to. If the parent is also a reply, pull its parent too — follow the chain up to 3 levels or until you reach the thread root, whichever comes first. The full conversational context determines whether the reply is appropriate.
+
+2. **Identify the account being replied to.** Determine the DID of the account that authored the parent post. Gather basic context: is this a known account? Any prior moderation history? Any relationship signals?
+
+3. **Check the relationship between accounts.** Determine whether the replier and the person being replied to follow each other. Mutual follows indicate a conversational relationship where different norms may apply — banter between mutuals reads differently than unsolicited hostile replies to strangers.
+
+4. **Identify the reporter.** Determine whether the person who filed the report is the same person being replied to, or a third party. This matters:
+   - **Reporter is the reply target:** they experienced the content directly and their report reflects first-person impact
+   - **Reporter is a third party:** they observed the exchange but may lack context about the relationship between the participants. The reply may be part of an ongoing conversation that the reporter isn't privy to. Additional context is needed before acting.
+
+5. **Synthesise.** Factor all of the above into the classification. A reply classified as potentially violating must have its thread context documented in `key_evidence` so the analyst can verify the contextual judgment.
 
 ### Classification
 
@@ -83,8 +126,9 @@ Apply the following schema to each subject. Every field must be populated.
 | `confidence` | enum | `high`, `medium`, `low` |
 | `policy_basis` | string | Which policy from `.policies/` supports this decision, or "no applicable policy" |
 | `recommended_label` | string | Label to apply (only when classification is `label`) |
+| `label_level` | enum | `post` or `account` — whether the label targets this specific content or the account overall (only when classification is `label`) |
 | `reasoning` | string | Brief explanation of the decision |
-| `key_evidence` | list | Specific posts, signals, or history items that informed the decision |
+| `key_evidence` | list | Specific posts, signals, or history items that informed the decision. For replies, must include thread context. |
 | `question` | string | Only for `defer` — the specific question for the analyst |
 
 ### Classification Criteria
@@ -144,9 +188,10 @@ Present all subjects as a batch summary. Group by classification for easy scanni
 
 ### Recommended: Label ([n])
 
-| # | Subject | Label | Policy Basis | Confidence | Key Evidence |
-|---|---------|-------|-------------|------------|--------------|
-| 1 | did:plc:... | [label] | [policy] | high | [one-line summary] |
+| # | Subject | Label | Level | Policy Basis | Confidence | Key Evidence |
+|---|---------|-------|-------|-------------|------------|--------------|
+| 1 | at://did:plc:.../app.bsky.feed.post/... | [label] | post | [policy] | high | [one-line summary] |
+| 2 | did:plc:... | [label] | account | [policy] | high | [one-line summary] |
 
 ### Recommended: No Action ([n])
 
@@ -190,7 +235,7 @@ If the user answered any `defer` questions, write each decision to `.policies/pr
 For all subjects confirmed for labelling:
 
 1. Generate a single `batchId` (UUID) for this triage session
-2. Apply labels via `ozone_label` for each subject with the confirmed label
+2. Apply labels via `ozone_label` for each subject with the confirmed label. Use the AT-URI for post-level labels and the DID for account-level labels — these are distinct actions targeting different subjects
 3. Add `ozone_comment` with reasoning where the decision was non-obvious or where the analyst provided specific notes
 
 ### Step 3: Execute Other Actions
