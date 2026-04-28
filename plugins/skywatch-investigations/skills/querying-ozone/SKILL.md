@@ -12,6 +12,13 @@ user-invocable: false
 
 Reference guide for the 10 Ozone MCP tools available through the skywatch-mcp server. Covers parameter patterns, filter combinations, pagination, and common recipes. Load this skill when you need to interact with the Ozone moderation API.
 
+### Delegation Pattern
+
+Ozone read queries (queue pulls, event history) and write actions (labelling, acknowledging, escalating) should be dispatched to subagents rather than executed inline by the supervisory agent. Pass the subagent the parameters it needs — subject, label, comment, batchId — and let it execute. This preserves the supervisory agent's context window for decision-making.
+
+- **Read queries:** Dispatch to a Sonnet subagent with the research question. Receive a structured summary.
+- **Write actions:** Dispatch to a Haiku subagent with a pre-built action manifest. Mechanical execution, no judgment required.
+
 ## Credentials
 
 Ozone tools require four environment variables: `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`. These are NOT in `.mcp.json` — they must be set in the shell environment or `~/.claude/settings.json`. All tools fail gracefully with a clear error if credentials are missing.

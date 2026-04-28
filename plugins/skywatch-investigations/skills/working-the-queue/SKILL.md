@@ -19,7 +19,11 @@ The primary triage agent delegates work to subagents to preserve its context win
 | Task | Model | Rationale |
 |------|-------|-----------|
 | Per-subject data collection & recommendation (Phase 1) | Sonnet | Speed — Opus is too slow for per-subject collection across a batch |
+| Follow-up investigation queries (Phase 1) | Sonnet | Additional ClickHouse or Ozone queries when initial evidence is insufficient |
+| Ozone read queries (queue pulls, event history) | Sonnet | Rote data retrieval; return structured summaries to the supervisor |
 | Action execution — labelling, acknowledging, escalating (Phase 3) | Haiku | Mechanical execution of a pre-built manifest; no judgment required |
+
+The primary Opus agent makes all classification and presentation decisions. Everything else — data gathering, Ozone queries, action execution — is delegated. Pass subagents the information they need (DIDs, AT-URIs, labels, comments, batchIds) and receive summaries or execution confirmations back.
 
 ## Prerequisites
 

@@ -2,6 +2,12 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.21.0
+
+- `conducting-investigations`: all ClickHouse queries across 6 phases now dispatched to Sonnet subagents instead of inline `clickhouse_query`
+- `querying-ozone`: added delegation pattern section — reads to Sonnet, writes to Haiku
+- `working-the-queue`: expanded subagent model table to include Ozone read queries and follow-up investigation
+
 ## skywatch-investigations 0.20.0
 
 - `working-the-queue`: Phase 3 action execution (labelling, acknowledging, escalating) delegated to Haiku subagent

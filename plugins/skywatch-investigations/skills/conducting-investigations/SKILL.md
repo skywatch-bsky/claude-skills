@@ -8,6 +8,10 @@ user-invocable: false
 
 This skill guides investigation of suspicious activity on the AT Protocol, using a structured six-phase methodology that moves from broad discovery to targeted evidence gathering and final reporting.
 
+### ClickHouse Query Delegation
+
+All ClickHouse queries must be dispatched to Sonnet subagents. ClickHouse querying is a rote activity — formulate SQL, execute, parse — and it consumes context window space with raw data. Dispatch a subagent with the research question, receive a structured summary back. The investigator works from summaries, not raw query results. MCP tools (co-sharing, recon) can be called directly.
+
 ## Phase 1: Discovery
 
 Start from a lead — reported accounts, rule hits, or suspicious patterns observed. The goal is rapid initial assessment to decide whether deeper investigation is warranted.
@@ -22,10 +26,13 @@ Start from a lead — reported accounts, rule hits, or suspicious patterns obser
 - Check co-sharing clusters for the target account — is it part of a URL co-sharing network?
 
 **Tool Guidance:**
-- `clickhouse_query` — Extract rule hit history, temporal distribution, rule types triggered
-- `clickhouse_query` on `account_entropy_results` — Check if target accounts are flagged as bot-like
-- `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear in anomalous domain sharing events (via `sample_dids`)
-- `clickhouse_query` on `signup_anomaly` — Check if target accounts appear on PdsHost with anomalous PDS signup volume
+
+Dispatch a Sonnet subagent for all ClickHouse queries — the task is rote and preserves the investigator's context window for analysis:
+
+- Subagent: "Pull rule hit history for DID [X] — temporal distribution, rule types triggered, counts by rule over the past 90 days"
+- Subagent: "Check account_entropy_results for DID [X] — is it flagged as bot-like? Return entropy values"
+- Subagent: "Check url_overdispersion_results for DID [X] — does this account appear in sample_dids for any anomalous domains?"
+- Subagent: "Check pds_signup_anomalies for the PDS hosting DID [X] — any anomalous signup volume?"
 - `cosharing_clusters` with `did` — Check if target accounts belong to any co-sharing clusters. Cluster membership is an early coordination signal.
 - `domain_check` — Verify any domains mentioned in problematic content
 
@@ -57,8 +64,11 @@ Build a comprehensive profile of the target account(s). This phase focuses on un
 - Account entropy scores — hourly and interval entropy values, bot-like classification
 
 **Tool Guidance:**
-- `clickhouse_query` — Generate detailed activity timelines, aggregate posting statistics by hour/day
-- `clickhouse_query` on `account_entropy_results` — Get entropy scores for target accounts. High `hourly_entropy` (≥ 3.9) indicates uniform 24-hour posting; low `interval_entropy` (≤ 1.5) indicates mechanical spacing. Both = `is_bot_like`.
+
+Dispatch a Sonnet subagent for ClickHouse queries:
+
+- Subagent: "Generate a detailed activity timeline for DID [X] — posting statistics by hour/day, content themes, total volume"
+- Subagent: "Get entropy scores from account_entropy_results for DID [X]. High hourly_entropy (≥ 3.9) = uniform 24-hour posting; low interval_entropy (≤ 1.5) = mechanical spacing. Both = is_bot_like."
 - `ip_lookup` — Resolve any IP addresses associated with content or metadata
 - `whois_lookup` — Query registration details for discovered domains
 
@@ -89,10 +99,13 @@ Find connected accounts. This phase identifies other accounts exhibiting similar
 - URL co-sharing cluster membership — accounts in the same cluster are sharing the same URLs on the same days
 
 **Tool Guidance:**
+
+Dispatch a Sonnet subagent for ClickHouse queries:
+
+- Subagent: "Cluster these DIDs by shared patterns — same URLs, same domains, same posting times. Use GROUP BY to find commonalities."
+- Subagent: "Check account_entropy_results for DIDs [list]. Which are flagged is_bot_like? Do they share similar entropy profiles?"
+- Subagent: "Check url_overdispersion_results — do any of these DIDs appear together in sample_dids for the same anomalous domain?"
 - `content_similarity` — Find accounts posting the same or similar content (detects copypasta, template reuse)
-- `clickhouse_query` with GROUP BY — Cluster accounts by shared patterns (same URLs, same domains, same posting times)
-- `clickhouse_query` on `account_entropy_results` — Check if multiple target accounts share bot-like flags. A cluster of accounts all flagged `is_bot_like = 1` with similar entropy profiles is a strong coordination signal.
-- `clickhouse_query` on `url_overdispersion_results` — Check if target accounts appear together in `sample_dids` for the same anomalous domain. Accounts co-occurring in domain campaigns establishes linkage.
 - `cosharing_clusters` with `did` — Check if target accounts belong to co-sharing clusters. Multiple target accounts in the same cluster is strong evidence of coordination.
 - `cosharing_pairs` with `did` — Drill into raw co-sharing edges to see exactly which URLs are being co-shared and with whom.
 - `cosharing_evolution` with `cluster_id` — If a cluster is found, trace its history to understand when the coordination started and how the network has evolved.
@@ -124,7 +137,10 @@ Understand how the network's content spreads and what it targets. This phase rev
 - Engagement metrics: likes, reposts, replies per content
 
 **Tool Guidance:**
-- `clickhouse_query` — Aggregate engagement patterns, track content through reply trees
+
+Dispatch a Sonnet subagent for ClickHouse queries:
+
+- Subagent: "Aggregate engagement patterns for these DIDs [list] — track content through reply trees, repost chains, quote posts"
 - `url_expand` — Resolve shortened URLs and link redirects to understand traffic targeting
 
 **Signals to Document:**
@@ -150,7 +166,10 @@ Test whether existing rules catch the identified network. This phase reveals det
 - Identify patterns that should trigger rules but don't
 
 **Tool Guidance:**
-- `clickhouse_query` — Aggregate rule hits by account and rule type; compare hit distribution before and after network identification
+
+Dispatch a Sonnet subagent for ClickHouse queries:
+
+- Subagent: "Aggregate rule hits for DIDs [list] by account and rule type. Compare hit distribution before and after [date] to assess detection coverage."
 
 **Signals to Document:**
 - Rules that catch the network (coverage percentage)
