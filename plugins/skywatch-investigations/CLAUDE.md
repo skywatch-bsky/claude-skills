@@ -1,6 +1,6 @@
 # Skywatch Investigations Plugin
 
-Last verified: 2026-04-04
+Last verified: 2026-04-28
 
 ## Purpose
 
@@ -28,6 +28,8 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `search-incidents` — topic-based incident search with relevance scoring and content classification
   - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
   - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
+  - `querying-ozone` — Ozone MCP tool reference: query patterns, filter combinations, pagination, write tool conventions
+  - `working-the-queue` — moderation queue triage methodology: two-pass scan-classify-act workflow with policy-based recommendations
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -53,7 +55,9 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 ### Guarantees
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
-- Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits) on-demand at the relevant investigation phase — never pre-loaded
+- Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits, working-the-queue) on-demand at the relevant phase — never pre-loaded
+- `working-the-queue` loads `querying-ozone` as a prerequisite and reads `.policies/` from the working directory for label/policy guidance
+- When `working-the-queue` encounters ambiguous policy interpretation, it defers to the analyst and records the decision as a precedent in `.policies/precedents/`
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
 - All Ozone tools require explicit credentials — fail gracefully without them
@@ -67,6 +71,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - ClickHouse direct access configured via env vars (`CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE`)
 - Python 3.12+ and `uv`/`uvx` installed for MCP server
 - Ozone credentials (optional — only for read/write tools): `OZONE_HANDLE`, `OZONE_ADMIN_PASSWORD`, `OZONE_DID`, `OZONE_PDS`
+- `.policies/` directory in working directory (optional — for `working-the-queue`): label definitions, enforcement criteria, and policy guidance. May contain a `precedents/` subdirectory with analyst decisions on ambiguous cases
 
 ## Dependencies
 
@@ -103,12 +108,17 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | "Search for incidents about X" | `search-incidents` skill (standalone) or `investigator` agent |
 | "Triage rule hits for rule X" | `triage-rule-hits` skill (standalone) or `investigator` agent |
 | "Classify this cluster" | `classify-cluster` skill (standalone) or `investigator` agent |
+| "Pull the latest reports from the queue" | `working-the-queue` skill |
+| "Triage 20 recent reports" | `working-the-queue` skill |
+| "Process all appeals" | `working-the-queue` skill (entry point: appeals) |
+| "How do I use the ozone query tools?" | `querying-ozone` skill |
+| "What filters does ozone_query_statuses accept?" | `querying-ozone` skill |
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.17.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.18.0, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
@@ -120,6 +130,8 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `skills/triage-rule-hits/SKILL.md` | Rule hit triage methodology (sampling, classification, health assessment) |
 | `skills/search-incidents/SKILL.md` | Topic-based incident search methodology |
 | `skills/classify-cluster/SKILL.md` | Co-sharing cluster classification methodology |
+| `skills/querying-ozone/SKILL.md` | Ozone MCP tool reference (query patterns, filters, write conventions) |
+| `skills/working-the-queue/SKILL.md` | Queue triage methodology (scan-classify-act with policy guidance) |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
