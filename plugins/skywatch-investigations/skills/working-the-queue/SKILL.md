@@ -12,6 +12,15 @@ user-invocable: false
 
 This skill guides moderation queue triage using a two-pass approach: first scan a batch of subjects with lightweight context gathering to produce recommendations, then act on user-confirmed decisions. The goal is efficient batch processing where the analyst reviews AI recommendations rather than raw reports.
 
+### Subagent Model Selection
+
+The primary triage agent delegates work to subagents to preserve its context window:
+
+| Task | Model | Rationale |
+|------|-------|-----------|
+| Per-subject data collection & recommendation (Phase 1) | Sonnet | Speed — Opus is too slow for per-subject collection across a batch |
+| Action execution — labelling, acknowledging, escalating (Phase 3) | Haiku | Mechanical execution of a pre-built manifest; no judgment required |
+
 ## Prerequisites
 
 ### Load Reference Skill
@@ -67,7 +76,7 @@ When recommending an account-level label, add it as a separate classification en
 
 ### Per-Subject Data Collection
 
-For each subject, dispatch a subagent to gather context. The subagent collects all four categories below and returns a structured summary. This preserves the triage agent's context window for classification decisions across the full batch.
+For each subject, dispatch a **Sonnet** subagent to gather context. Use Sonnet for speed — Opus is too slow for per-subject data collection across a batch. The subagent collects all four categories below and returns a structured summary. This preserves the triage agent's context window for classification decisions across the full batch.
 
 **Subagent prompt pattern:**
 
@@ -114,6 +123,20 @@ If the reported content is a reply, the reply MUST be evaluated in the context o
    - **Reporter is a third party:** they observed the exchange but may lack context about the relationship between the participants. The reply may be part of an ongoing conversation that the reporter isn't privy to. Additional context is needed before acting.
 
 5. **Synthesise.** Factor all of the above into the classification. A reply classified as potentially violating must have its thread context documented in `key_evidence` so the analyst can verify the contextual judgment.
+
+### Follow-Up Investigation
+
+After reviewing a subagent's returned summary and recommendation, the primary triage agent may determine the evidence is insufficient for a confident classification. When this happens, dispatch additional Sonnet subagents to fill the gap. Do not settle for low-confidence classifications when more data is available.
+
+Examples of follow-up dispatches:
+
+- **Deeper ClickHouse queries** — "Pull all posts from this DID in the past 7 days that matched rule [X]. Return full post text and timestamps." or "Find all accounts that co-shared URLs with this DID in the past 7 days."
+- **Thread expansion** — "Retrieve the full thread for AT-URI [X] — all replies, not just the parent chain."
+- **Account relationship check** — "Determine the follow relationship between DID [A] and DID [B]. Check if they have prior interaction history."
+- **Content similarity** — "Find posts across the network with similar text to [quoted content] using content_similarity."
+- **Additional moderation history** — "Pull full ozone_query_events for DID [X] going back 90 days, not just the default."
+
+The triage agent owns the classification decision. If the initial subagent's evidence leaves gaps, fill them rather than guessing. The cost of an additional Sonnet subagent is trivial compared to a wrong moderation action.
 
 ### Classification
 
@@ -218,7 +241,15 @@ Present all subjects as a batch summary. Group by classification for easy scanni
 | 1 | did:plc:... | [escalation reason] |
 ```
 
-For each subject classified as `label`, include enough context (key posts, moderation history, rule hits) that the analyst can verify the recommendation without re-querying.
+### Per-Subject Detail
+
+After the summary table, present a detail block for **every** subject (not just `label` recommendations). Each block must include:
+
+1. **The reported content itself** — the actual text of the post or content that was reported, quoted verbatim. The analyst must see exactly what was reported to verify the agent's judgment. For replies, also show the parent post(s) so the thread context is visible.
+2. **The agent's recommendation and reasoning** — classification, policy basis, confidence.
+3. **Key evidence** — relevant moderation history, rule hit patterns, thread context, account relationship details.
+
+The analyst should be able to read a detail block and make a decision without needing to go look anything up. If the reported content is an image or media that can't be displayed as text, note that and provide the AT-URI so the analyst can review it directly.
 
 **Then wait for user direction.** Do not proceed to Phase 3 until the user confirms, modifies, or overrides the recommendations.
 
@@ -226,31 +257,37 @@ For each subject classified as `label`, include enough context (key posts, moder
 
 Execute the user's confirmed decisions. The user may accept all recommendations, override specific ones, or provide answers to defer questions.
 
+Dispatch action execution to a Haiku subagent to preserve context and reduce cost. The triage agent generates the full action manifest and hands it off — the subagent executes mechanically.
+
 ### Step 1: Record Precedents
 
 If the user answered any `defer` questions, write each decision to `.policies/precedents/` before proceeding. This ensures the precedent is recorded even if the session is interrupted during labelling.
 
-### Step 2: Apply Labels
+### Step 2: Dispatch Action Subagent
 
-For all subjects confirmed for labelling:
+Generate the action manifest and dispatch a **Haiku** subagent with the following prompt pattern:
 
-1. Generate a single `batchId` (UUID) for this triage session
-2. Apply labels via `ozone_label` for each subject with the confirmed label. Use the AT-URI for post-level labels and the DID for account-level labels — these are distinct actions targeting different subjects
-3. Add `ozone_comment` with reasoning where the decision was non-obvious or where the analyst provided specific notes
+> Execute the following moderation actions. Use batchId [UUID] for all label operations.
+>
+> **Labels to apply:**
+> [For each: subject (AT-URI or DID), label name, level (post/account), comment text if any]
+>
+> **Other actions:**
+> [For each: subject, action type (escalate/tag/mute), parameters]
+>
+> **Acknowledge:**
+> [List of all subjects to acknowledge. Use acknowledgeAccountSubjects: true for DIDs.]
+>
+> Apply labels via `ozone_label`, comments via `ozone_comment`, then execute other actions, then acknowledge all subjects. Report back what succeeded and what failed.
 
-### Step 3: Execute Other Actions
-
-- `ozone_escalate` for subjects the user confirmed for escalation
-- `ozone_tag` for subjects that need tagging
-- `ozone_mute` for subjects that should be suppressed
-
-### Step 4: Acknowledge All
-
-After all actions are complete, acknowledge ALL processed subjects to close them in the queue:
-
-- Use `ozone_acknowledge` for each subject
-- Use `acknowledgeAccountSubjects: true` for account-level subjects to bulk-close all associated reports
-- This applies to both labelled subjects AND no-action subjects — acknowledgement is the "done" action that closes the report
+The subagent handles:
+- Applying labels (AT-URI for post-level, DID for account-level)
+- Adding `ozone_comment` with reasoning where the decision was non-obvious
+- `ozone_escalate` for escalation subjects
+- `ozone_tag` for tagging subjects
+- `ozone_mute` for suppression subjects
+- `ozone_acknowledge` for ALL processed subjects (both labelled and no-action — acknowledgement closes the report)
+- `acknowledgeAccountSubjects: true` for account-level subjects to bulk-close associated reports
 
 ### Output
 

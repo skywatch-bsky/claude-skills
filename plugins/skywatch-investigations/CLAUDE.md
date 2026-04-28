@@ -122,7 +122,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.19.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.20.0, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |

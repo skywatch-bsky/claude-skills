@@ -2,6 +2,14 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.20.0
+
+- `working-the-queue`: Phase 3 action execution (labelling, acknowledging, escalating) delegated to Haiku subagent
+- `working-the-queue`: Phase 1 data collection subagents explicitly use Sonnet for speed
+- `working-the-queue`: added model selection table documenting subagent model choices
+- `working-the-queue`: primary triage agent can dispatch follow-up Sonnet subagents for additional investigation (ClickHouse queries, thread expansion, relationship checks, content similarity)
+- `working-the-queue`: Phase 2 now shows reported content verbatim in per-subject detail blocks
+
 ## skywatch-investigations 0.19.0
 
 - `working-the-queue`: added subject granularity rules — post-level subjects are not deduplicated; each reported AT-URI is reviewed individually
