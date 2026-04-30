@@ -1,136 +1,179 @@
 # osprey_execution_results Schema
 
-The `osprey_execution_results` table in ClickHouse stores the execution history of Osprey moderation rules. Each row represents a single rule evaluation against a post or account on the AT Protocol.
+Verified against live ClickHouse: 2026-04-29
 
-<!-- TODO: populate from live ClickHouse — Run DESCRIBE TABLE default.osprey_execution_results and enumerate all columns below with actual ClickHouse types -->
+The `osprey_execution_results` table in ClickHouse stores the execution history of Osprey moderation rules. Each row represents a single action evaluation — a post, follow, profile update, or other AT Protocol event that was processed by the rule engine.
 
-> **⚠ Inferred Columns**
->
-> The columns listed below are inferred from exploratory queries and sample data. They should be verified against the actual schema using `DESCRIBE TABLE default.osprey_execution_results` in ClickHouse. Column types, presence, and semantics may differ from what's documented here. Always validate the live schema before relying on this reference for query optimization or data interpretation.
+## Table Structure
 
-## Core Columns
+The table has two categories of columns:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | String | Unique identifier for the execution record |
-| `created_at` | DateTime | UTC timestamp when the rule was evaluated |
-| `rule_name` | String | Name of the Osprey rule that was executed |
-| `rule_id` | String | Unique identifier for the rule definition |
+1. **System columns** (6) — prefixed with `__`, present on every row, describe the evaluation event itself.
+2. **Dynamic rule/model columns** (~606 and growing) — one column per rule or model output. PascalCase names. Added automatically when new rules are deployed.
 
-## AT Protocol Identifier Columns
+## System Columns
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `did` | String | DID (Decentralized Identifier) of the AT Protocol account being evaluated. Format: `did:plc:xxxxx...` |
-| `handle` | String | Human-readable username of the account. Format: `username.bsky.social` or custom domain |
-| `uri` | String | AT-URI of the content being evaluated. Format: `at://did:plc:xxxxx/app.bsky.feed.post/rkey` |
+| `__action_id` | Int64 | Unique identifier for the evaluation event |
+| `__timestamp` | DateTime64(3) | UTC timestamp when the evaluation occurred (millisecond precision) |
+| `__error_count` | Nullable(Int32) | Number of errors during evaluation (NULL if none) |
+| `__atproto_label` | Array(String) | Labels applied to the AT Protocol entity as a result of this evaluation |
+| `__entity_label_mutations` | Array(String) | Label changes (additions/removals) applied to the entity |
+| `__verdicts` | Array(String) | Verdict strings emitted by rules during this evaluation |
 
-## Content Columns
+### Key Points
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `content` | String | Full text content of the post or record being evaluated |
-| `content_hash` | String | Hash of the content for deduplication and matching |
+- **`__timestamp`** is the primary time column. Always filter on it for performance.
+- **`__action_id`** is unique per evaluation and serves as the row identifier.
+- There is no `created_at`, `rule_name`, `did`, `handle`, `uri`, `content`, `matched`, or `score` column. These concepts are encoded in the dynamic columns.
 
-## Evaluation Result Columns
+## Dynamic Rule/Model Columns
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `matched` | Boolean | Whether the rule matched (true) or not (false) |
-| `score` | Float | Numeric score output by the rule (0-1 range typically, but rule-dependent) |
-| `confidence` | Float | Confidence score for the match (0-1 range) |
+Each Osprey rule or model output gets its own column. Column names are PascalCase identifiers matching the rule or model name in SML. All dynamic columns are `Nullable` — they are NULL when the rule/model was not evaluated for that event.
 
-## Account Metadata Columns
+### Column Type Patterns
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `account_age_days` | Int32 | Age of the account in days at time of evaluation |
-| `follower_count` | Int64 | Number of followers the account had at evaluation time |
-| `post_count` | Int64 | Number of posts the account had made at evaluation time |
+| ClickHouse Type | Meaning | Examples |
+|----------------|---------|----------|
+| `Nullable(UInt8)` | Boolean rule result (0 = no match, 1 = match) | `AltGovHandleRule`, `SuicidalContentRule` |
+| `Nullable(Int64)` | Integer model output (count, age in seconds, etc.) | `AccountAgeSeconds`, `FastFollowVelocityRepeatCount` |
+| `Nullable(Float64)` | Numeric score (toxicity, similarity, etc.) | `ToxicityScoreUnwrapped` |
+| `Nullable(String)` | String model output (DID, name, collection, URL, etc.) | `DisplayName`, `FollowSubjectDid`, `ActionName` |
 
-## Infrastructure Columns
+### Common Infrastructure Models
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `pds_host` | String | Personal Data Server (PDS) host where the account is hosted. Format: `example.com` |
-| `pds_instance_id` | String | Internal identifier for the PDS instance |
-
-## Execution Context Columns
+These model columns appear on most rows and provide event context:
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `event_type` | String | Type of AT Protocol event triggered evaluation: `post`, `profile`, `follow`, etc. |
-| `rule_category` | String | Categorization of the rule: `spam`, `abuse`, `policy`, `quality`, etc. |
+| `ActionName` | Nullable(String) | AT Protocol action type (e.g., `create_post`, `create_follow`, `update_profile`) |
+| `AccountAgeSeconds` | Nullable(Int64) | Age of the account in seconds at evaluation time |
+| `AccountCreatedAt` | Nullable(String) | ISO timestamp of account creation |
+| `DisplayName` | Nullable(String) | Display name of the account |
+| `PostHasExternal` | Nullable(UInt8) | Whether the post contains an external link |
+| `FollowSubjectDid` | Nullable(String) | DID of the follow target (for follow events) |
+| `FollowSubjectVia` | Nullable(String) | How the follow was initiated |
+| `IsMonitoredPdsHost` | Nullable(UInt8) | Whether the account's PDS is on the monitored list |
 
-## Common Filter Columns
+### Label-Check Models
 
-These columns are frequently used in WHERE clauses for investigation queries:
+Columns prefixed with `Has...Label` check whether an entity already carries a specific label:
 
-- **`created_at`** — Filter by date range (most critical for performance)
-- **`rule_name`** — Filter by specific rule
-- **`did`** — Filter by account DID
-- **`handle`** — Filter by account handle
-- **`matched`** — Filter for actual matches (true) vs. non-matches (false)
-- **`pds_host`** — Filter by PDS host for infrastructure analysis
+| Column | Type |
+|--------|------|
+| `HasContainsSlurLabel` | Nullable(UInt8) |
+| `HasNaziSymbolismLabel` | Nullable(UInt8) |
+| `NotHasElonMuskLabelRule` | Nullable(UInt8) |
 
-## AT Protocol Identifier Formats
+### Rule Columns
 
-### DID (Decentralized Identifier)
+Rule columns (suffixed `Rule`) are boolean — 1 means the rule matched. Examples:
 
-Format: `did:plc:` followed by base32-encoded identifier
+- `AltGovHandleRule` — matches alt-government handles
+- `DigestRepostBotRule` — matches digest/repost bot patterns
+- `FollowFarmingAccountRule` — matches follow-farming behaviour
+- `SuicidalContentRule` — matches suicidal content
+- `OnlyFansVipHandleSpamRule` — matches OnlyFans VIP handle spam
+- `ContainsSlurProfileRule` — matches slur usage in profiles
+- `MediumDailySlurUseRule` — matches medium-frequency daily slur usage
 
-Example: `did:plc:x4jwkycm6wq3yvlq4xxd7zxdx`
+There are ~600 rule and model columns. Use `clickhouse_schema` to get the current full list, or query column names:
 
-Use for exact account matching and cross-table joins.
+```sql
+SELECT name, type
+FROM system.columns
+WHERE table = 'osprey_execution_results' AND database = 'default'
+ORDER BY name
+LIMIT 1000
+```
 
-### Handle
+## Querying Patterns
 
-Format: `username.domain` or `username.bsky.social`
+Since there's no single `rule_name` column, you query specific rules by their column name:
 
-Examples:
-- `alice.bsky.social`
-- `custom.example.com`
+```sql
+-- Find accounts that matched a specific rule
+SELECT __action_id, __timestamp, DisplayName, AccountAgeSeconds
+FROM default.osprey_execution_results
+WHERE AltGovHandleRule = 1
+  AND __timestamp > now() - INTERVAL 7 DAY
+LIMIT 100
+```
 
-Handles are user-facing but can change; DIDs are permanent.
+```sql
+-- Find all rule matches for a specific account (check multiple rule columns)
+SELECT __timestamp, AltGovHandleRule, SuicidalContentRule, DigestRepostBotRule
+FROM default.osprey_execution_results
+WHERE ActionName = 'create_post'
+  AND __timestamp > now() - INTERVAL 1 DAY
+LIMIT 100
+```
 
-### AT-URI
-
-Format: `at://` + DID + `/` + collection + `/` + record key
-
-Example: `at://did:plc:xxx/app.bsky.feed.post/abc123xyz`
-
-Uniquely identifies a post or other AT Protocol record.
+```sql
+-- Count rule hits over time
+SELECT
+    toDate(__timestamp) AS day,
+    countIf(AltGovHandleRule = 1) AS alt_gov_hits,
+    countIf(DigestRepostBotRule = 1) AS digest_bot_hits
+FROM default.osprey_execution_results
+WHERE __timestamp > now() - INTERVAL 7 DAY
+GROUP BY day
+ORDER BY day
+LIMIT 30
+```
 
 ## Performance Notes
 
-<!-- TODO: populate from live ClickHouse — Add actual data volume, time range, and query performance characteristics -->
+- **Always filter on `__timestamp`** — this is the partitioning key.
+- **Select only needed columns** — with 600+ columns, `SELECT *` is extremely expensive.
+- **Use LIMIT** — always include a LIMIT clause.
+- **Dynamic columns are sparse** — most are NULL for any given row. ClickHouse handles this efficiently in columnar storage.
 
-- **Data volume**: [TODO: total row count]
-- **Time range covered**: [TODO: min/max created_at values]
-- **Table size on disk**: [TODO: estimated size in MB/GB]
+---
 
-## Query Optimization
+# pds_signup_anomalies Schema
 
-ClickHouse is column-oriented, so query performance depends on:
+Verified against live ClickHouse: 2026-04-29
 
-1. **Time filtering** — Always include a `created_at` range in WHERE clauses. This is the primary partitioning key.
-2. **Column selection** — SELECT only columns you need. Avoid SELECT *.
-3. **LIMIT** — Always include LIMIT to cap result set size.
-4. **Index columns** — `did`, `handle`, and `rule_name` are frequently indexed. Use them in WHERE clauses when possible.
+The `pds_signup_anomalies` table stores output from the PDS signup anomaly sidecar. Each row represents a PDS host's signup statistics within a time bucket, scored against its baseline.
 
-## Example Queries
+## Columns
 
-See `querying-clickhouse` skill for 15+ proven query patterns.
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_timestamp` | DateTime64(3) | When the sidecar analysis cycle ran |
+| `granularity` | Enum8('daily'=1, 'hourly'=2) | Time bucket granularity |
+| `pds_host` | String | PDS hostname (e.g., `example.com`) |
+| `observed_count` | UInt64 | Number of signups observed in the bucket |
+| `distinct_accounts` | UInt64 | Number of distinct accounts that signed up |
+| `expected_lambda` | Float64 | Baseline expected signup rate (Poisson lambda) |
+| `p_value` | Float64 | p-value for signup rate anomaly (low = statistically surprising) |
+| `is_anomaly` | UInt8 | 1 if p-value crossed the threshold |
+| `baseline_source` | Enum8('entity'=1, 'population'=2) | Whether baseline comes from host's own history or population median |
+| `baseline_days_available` | UInt16 | Days of historical data used for baseline |
+| `dispersion_index` | Nullable(Float64) | Variance-to-mean ratio of signup timing (high = bursty) |
+| `rolling_mean` | Nullable(Float64) | Rolling mean of signup rate |
+| `rolling_variance` | Nullable(Float64) | Rolling variance of signup rate |
+| `sample_dids` | Array(String) | Sample DIDs of accounts that signed up |
 
-## Notes on Data Semantics
+## Ordering Key
 
-- **Null values**: Columns may contain NULL if data was not available at evaluation time
-- **Timestamps**: All `created_at` values are in UTC
-- **Scores**: Rule-specific and can vary widely (0-1, 0-100, or other ranges depending on the rule)
+`(run_timestamp, granularity, pds_host)` — filter by run_timestamp for performance.
+
+## Common Filters
+
+- `is_anomaly = 1` — only anomalous PDS hosts
+- `granularity = 'daily'` or `granularity = 'hourly'` — select time resolution
+- `p_value < 0.01` — strong anomalies only
+- `baseline_source = 'entity'` — hosts with established baselines (more reliable)
+- `dispersion_index > 2.0` — bursty signup patterns (Poisson expectation is 1.0)
 
 ---
 
 # url_overdispersion_results Schema
+
+Verified against live ClickHouse: 2026-04-29
 
 The `url_overdispersion_results` table stores output from the URL overdispersion sidecar. Each row represents a domain's sharing statistics within a time bucket, scored against its baseline.
 
@@ -171,7 +214,49 @@ The `url_overdispersion_results` table stores output from the URL overdispersion
 
 ---
 
+# quote_overdispersion_results Schema
+
+Verified against live ClickHouse: 2026-04-29
+
+The `quote_overdispersion_results` table stores output from the quote overdispersion sidecar. Each row represents a quoted post's sharing statistics within a time bucket, scored against its baseline.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_timestamp` | DateTime64(3) | When the sidecar analysis cycle ran |
+| `granularity` | Enum8('hourly'=1, 'daily'=2) | Time bucket granularity |
+| `quoted_uri` | String | AT-URI of the post being quoted |
+| `quoted_author_did` | String | DID of the author of the quoted post |
+| `bucket_start` | DateTime64(3) | Start of the time bucket being analysed |
+| `total_shares` | UInt64 | Total number of quote-posts of this URI in the bucket |
+| `unique_sharers` | UInt64 | Number of distinct accounts that quoted this post |
+| `sharer_density` | Float64 | Ratio of unique_sharers to total_shares |
+| `expected_volume_lambda` | Float64 | Baseline expected quote rate (Poisson lambda) |
+| `expected_density_lambda` | Float64 | Baseline expected sharer density |
+| `volume_p_value` | Float64 | p-value for volume anomaly |
+| `density_p_value` | Float64 | p-value for density anomaly |
+| `is_anomaly` | UInt8 | 1 if either p-value crossed the threshold |
+| `baseline_source` | Enum8('entity'=1, 'population'=2) | Whether baseline comes from URI's own history or population median |
+| `baseline_days_available` | UInt16 | Days of historical data used for baseline |
+| `sample_dids` | Array(String) | Sample DIDs of accounts that quoted this post |
+
+## Ordering Key
+
+`(run_timestamp, granularity, quoted_uri)` — filter by run_timestamp for performance.
+
+## Common Filters
+
+- `is_anomaly = 1` — only anomalous quoted posts
+- `granularity = 'hourly'` or `granularity = 'daily'` — select time resolution
+- `volume_p_value < 0.01` — volume-only anomalies
+- `density_p_value < 0.01` — density-only anomalies
+
+---
+
 # account_entropy_results Schema
+
+Verified against live ClickHouse: 2026-04-29
 
 The `account_entropy_results` table stores output from the account entropy sidecar. Each row represents an account's temporal posting pattern analysis over a time window.
 
@@ -184,8 +269,8 @@ The `account_entropy_results` table stores output from the account entropy sidec
 | `window_start` | DateTime64(3) | Start of the analysis time window |
 | `window_end` | DateTime64(3) | End of the analysis time window |
 | `post_count` | UInt64 | Number of posts in the window |
-| `hourly_entropy` | Float64 | Shannon entropy over hour-of-day distribution (0–4.585 bits; high = uniform across hours = bot-like) |
-| `interval_entropy` | Float64 | Shannon entropy over inter-post interval distribution (0–2.81 bits; low = regular spacing = bot-like) |
+| `hourly_entropy` | Float64 | Shannon entropy over hour-of-day distribution (0-4.585 bits; high = uniform across hours = bot-like) |
+| `interval_entropy` | Float64 | Shannon entropy over inter-post interval distribution (0-2.81 bits; low = regular spacing = bot-like) |
 | `mean_interval_seconds` | Float64 | Average gap between consecutive posts in seconds |
 | `stddev_interval_seconds` | Float64 | Standard deviation of inter-post intervals in seconds |
 | `is_bot_like` | UInt8 | 1 only when both hourly_flag AND interval_flag are set (conjunction) |
@@ -208,14 +293,16 @@ The `account_entropy_results` table stores output from the account entropy sidec
 
 | Metric | Human-like | Bot-like |
 |--------|-----------|----------|
-| `hourly_entropy` | 1.5–2.5 bits (concentrated in a few hours) | ≥ 3.9 bits (spread across 15+ hours) |
-| `interval_entropy` | 2.0–2.8 bits (varied gaps) | ≤ 1.5 bits (regular gaps) |
+| `hourly_entropy` | 1.5-2.5 bits (concentrated in a few hours) | >= 3.9 bits (spread across 15+ hours) |
+| `interval_entropy` | 2.0-2.8 bits (varied gaps) | <= 1.5 bits (regular gaps) |
 
 The conjunction requirement (`is_bot_like` = both flags) substantially reduces false positives. Individual flags are useful for softer screening.
 
 ---
 
 # url_cosharing_pairs Schema
+
+Verified against live ClickHouse: 2026-04-29
 
 Daily account pairs that co-shared URLs. Populated by a ClickHouse scheduled materialized view. TTL 7 days.
 
@@ -250,6 +337,8 @@ Pairs are always stored with `account_a < account_b` (enforced by the materializ
 
 # url_cosharing_clusters Schema
 
+Verified against live ClickHouse: 2026-04-29
+
 Cluster-level results with metrics and evolution classification. Populated by the URL co-sharing Python sidecar. No TTL — retained indefinitely.
 
 ## Columns
@@ -267,7 +356,7 @@ Cluster-level results with metrics and evolution classification. Populated by th
 | `sample_dids` | Array(String) | First 10 member DIDs (for quick inspection) |
 | `sample_urls` | Array(String) | First 10 URLs shared by the cluster |
 | `resolution_parameter` | Float64 | CPM resolution used for this clustering run |
-| `evolution_type` | Enum8 | One of: `birth`, `death`, `continuation`, `merge`, `split` |
+| `evolution_type` | Enum8('birth'=1, 'death'=2, 'continuation'=3, 'merge'=4, 'split'=5) | Cluster evolution classification |
 | `predecessor_cluster_ids` | Array(String) | IDs of previous clusters this evolved from |
 | `jaccard_score` | Float64 | Jaccard similarity to best-matching predecessor |
 
@@ -302,6 +391,8 @@ Cluster-level results with metrics and evolution classification. Populated by th
 
 # url_cosharing_membership Schema
 
+Verified against live ClickHouse: 2026-04-29
+
 Daily membership snapshots — which DIDs belong to which cluster on which day. TTL 7 days.
 
 ## Columns
@@ -324,3 +415,84 @@ Daily membership snapshots — which DIDs belong to which cluster on which day. 
 ## TTL
 
 7 days. For cluster-level data beyond 7 days, use `url_cosharing_clusters` (no TTL). Use `cosharing_clusters` MCP tool for convenient membership-to-cluster lookups.
+
+---
+
+# quote_cosharing_pairs Schema
+
+Verified against live ClickHouse: 2026-04-29
+
+Daily account pairs that co-quoted the same posts. Same architecture as URL co-sharing but tracks quote-posts. TTL 7 days.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `date` | Date | Calendar day |
+| `account_a` | String | DID (lexicographically smaller of the pair) |
+| `account_b` | String | DID (lexicographically larger of the pair) |
+| `weight` | UInt32 | Count of AT-URIs this pair co-quoted on this date |
+| `shared_uris` | Array(String) | The AT-URIs they co-quoted |
+
+## Ordering Key
+
+`(date, account_a, account_b)` — filter by date for performance.
+
+## TTL
+
+7 days.
+
+---
+
+# quote_cosharing_clusters Schema
+
+Verified against live ClickHouse: 2026-04-29
+
+Cluster-level results for quote co-sharing. Same structure as `url_cosharing_clusters` but uses AT-URIs instead of URLs. No TTL.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_date` | Date | Date the clustering ran |
+| `cluster_id` | String | Stable ID in `YYYY-MM-DD-NNNN` format |
+| `member_count` | UInt32 | Number of accounts in the cluster |
+| `total_edges` | UInt32 | Number of co-quoting edges within the cluster |
+| `total_weight` | UInt32 | Sum of edge weights |
+| `unique_uris` | UInt32 | Count of distinct AT-URIs quoted within the cluster |
+| `temporal_spread_hours` | Float64 | Hours between earliest and latest quote by any member |
+| `mean_posting_interval_seconds` | Float64 | Average seconds between consecutive quotes |
+| `sample_dids` | Array(String) | First 10 member DIDs |
+| `sample_uris` | Array(String) | First 10 AT-URIs quoted by the cluster |
+| `resolution_parameter` | Float64 | CPM resolution used |
+| `evolution_type` | Enum8('birth'=1, 'death'=2, 'continuation'=3, 'merge'=4, 'split'=5) | Cluster evolution classification |
+| `predecessor_cluster_ids` | Array(String) | IDs of previous clusters this evolved from |
+| `jaccard_score` | Float64 | Jaccard similarity to best-matching predecessor |
+
+## Ordering Key
+
+`(run_date, cluster_id)` — filter by run_date for performance.
+
+---
+
+# quote_cosharing_membership Schema
+
+Verified against live ClickHouse: 2026-04-29
+
+Daily membership snapshots for quote co-sharing clusters. TTL 7 days.
+
+## Columns
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `run_date` | Date | Date of the snapshot |
+| `cluster_id` | String | Cluster ID |
+| `did` | String | Account DID |
+
+## Ordering Key
+
+`(run_date, cluster_id, did)` — filter by run_date for performance.
+
+## TTL
+
+7 days.

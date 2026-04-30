@@ -34,6 +34,8 @@ Osprey Rule Engine (runs continuously)
     ├─ account_entropy → account_entropy_results
     ├─ url_overdispersion → url_overdispersion_results
     ├─ url_cosharing → url_cosharing_pairs, _clusters, _membership
+    ├─ quote_overdispersion → quote_overdispersion_results
+    ├─ quote_cosharing → quote_cosharing_pairs, _clusters, _membership
     └─ signup_anomaly → pds_signup_anomalies
         ↓
 Investigation / Analysis / Labelling Decisions
@@ -41,7 +43,7 @@ Investigation / Analysis / Labelling Decisions
 
 ## Statistical Sidecars
 
-Three sidecar services run alongside Osprey, reading from `osprey_execution_results` and producing scored output in their own ClickHouse tables. They flag — they don't label or take action. Their output feeds into investigations as starting points.
+Six sidecar services run alongside Osprey, reading from `osprey_execution_results` and producing scored output in their own ClickHouse tables. They flag — they don't label or take action. Their output feeds into investigations as starting points.
 
 ### Account Entropy Sidecar
 
@@ -119,13 +121,13 @@ Key columns: `quoted_uri`, `quoted_author_did`, `granularity`, `total_shares`, `
 
 Monitors signup rates per PDS host at daily and hourly granularity. Flags when observed signup count is statistically unlikely given the baseline rate. Excludes known high-volume hosts (bsky.network, bridgy-fed, mostr.pub).
 
-Key columns: `pds_host`, `granularity`, `observed_count`, `expected_lambda`, `p_value`, `is_anomaly`, `baseline_source`, `sample_dids`.
+Key columns: `pds_host`, `granularity`, `observed_count`, `distinct_accounts`, `expected_lambda`, `p_value`, `is_anomaly`, `baseline_source`, `dispersion_index`, `rolling_mean`, `rolling_variance`, `sample_dids`.
 
 ### How It Works
 
 1. **Event Stream**: The AT Protocol firehose emits events (new posts, profile updates, follows, etc.)
-2. **Rule Evaluation**: Osprey evaluates each rule against each event
-3. **Result Recording**: If a rule matches (or scores above a threshold), Osprey writes a row to `osprey_execution_results`
+2. **Rule Evaluation**: Osprey evaluates all rules and models against each event
+3. **Result Recording**: Osprey writes a row to `osprey_execution_results` with system columns (`__action_id`, `__timestamp`, etc.) and populates each rule/model's column with its result (1/0 for rules, scores for models, strings for extractors). Columns for rules that didn't evaluate remain NULL.
 4. **Data Availability**: Investigators and moderators query ClickHouse to understand which accounts are triggering which rules
 
 ## ClickHouse Data Access
@@ -212,54 +214,66 @@ For the complete column listing, column types, and semantic descriptions, see:
 
 **`references/osprey-schema.md`** — Full schema documentation
 
-Key columns for investigations:
-- `created_at` — When the rule was evaluated (UTC)
-- `rule_name` — Which rule matched
-- `did` — AT Protocol account DID
-- `handle` — AT Protocol username
-- `content` — Text that was evaluated
-- `matched` — Whether the rule matched (true/false)
-- `score` — Numeric output from the rule
-- `pds_host` — Which PDS the account uses
+System columns (present on every row):
+- `__action_id` — Unique evaluation event identifier (Int64)
+- `__timestamp` — When the evaluation occurred, UTC (DateTime64(3))
+- `__error_count` — Errors during evaluation (Nullable(Int32))
+- `__atproto_label` — Labels applied (Array(String))
+- `__entity_label_mutations` — Label changes applied (Array(String))
+- `__verdicts` — Verdict strings emitted by rules (Array(String))
+
+Common dynamic columns (PascalCase, all Nullable):
+- `ActionName` — AT Protocol action type (e.g., `create_post`, `create_follow`)
+- `AccountAgeSeconds` — Account age in seconds at evaluation time
+- `DisplayName` — Account display name
+- `PostHasExternal` — Whether post contains an external link
+- Rule columns (e.g., `AltGovHandleRule`) — UInt8, 1 = matched
+- Score columns (e.g., `ToxicityScoreUnwrapped`) — Float64
 
 ## Common Investigation Patterns
 
 Investigation queries usually follow these patterns:
 
-**Find all rule matches for a specific account:**
+**Find accounts matching a specific rule:**
 ```sql
-SELECT rule_name, created_at, score
+SELECT __action_id, __timestamp, DisplayName, AccountAgeSeconds
 FROM default.osprey_execution_results
-WHERE did = 'did:plc:xxx...' AND created_at > now() - interval 7 day
+WHERE AltGovHandleRule = 1
+  AND __timestamp > now() - INTERVAL 7 DAY
 LIMIT 100
 ```
 
-**Find accounts triggering a specific rule:**
+**Count rule hits over time:**
 ```sql
-SELECT DISTINCT did, handle
+SELECT
+    toDate(__timestamp) AS day,
+    countIf(AltGovHandleRule = 1) AS alt_gov_hits,
+    countIf(DigestRepostBotRule = 1) AS digest_bot_hits
 FROM default.osprey_execution_results
-WHERE rule_name = 'spam-bot-pattern' AND matched = true AND created_at > now() - interval 1 day
-LIMIT 50
+WHERE __timestamp > now() - INTERVAL 7 DAY
+GROUP BY day
+ORDER BY day
+LIMIT 30
 ```
 
-**Analyze rule performance:**
+**Check multiple rules for recent activity:**
 ```sql
-SELECT rule_name, count() as hits, avg(score) as avg_score
+SELECT __timestamp, AltGovHandleRule, SuicidalContentRule, DigestRepostBotRule
 FROM default.osprey_execution_results
-WHERE created_at > now() - interval 7 day
-GROUP BY rule_name
+WHERE ActionName = 'create_post'
+  AND __timestamp > now() - INTERVAL 1 DAY
 LIMIT 100
 ```
 
-For 25 proven query patterns, see the `querying-clickhouse` skill.
+For proven query patterns, see the `querying-clickhouse` skill.
 
 ## Performance Tips
 
-1. **Always filter by time** — `created_at` filtering is critical for performance
-2. **Use LIMIT** — Results can be large; always limit rows
-3. **Select specific columns** — Avoid SELECT *; ClickHouse is column-oriented, so fewer columns = faster queries
-4. **Index awareness** — Common filters like `did`, `handle`, and `rule_name` are indexed
-5. **Content search is expensive** — If searching by `content` or using ngramDistance, narrow the time range and/or add other filters
+1. **Always filter on `__timestamp`** — this is the partitioning key and critical for performance
+2. **Use LIMIT** — results can be large; always limit rows
+3. **Select specific columns** — with 600+ columns, `SELECT *` is extremely expensive. ClickHouse is column-oriented, so fewer columns = faster queries
+4. **Dynamic columns are sparse** — most rule columns are NULL for any given row; only select the rules you care about
+5. **No `rule_name` column** — each rule is its own column. Query specific rules by column name, not by filtering a generic field
 
 ## Next Steps
 

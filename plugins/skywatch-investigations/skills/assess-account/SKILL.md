@@ -54,27 +54,43 @@ Dispatch each of the following research questions to the data-analyst agent. Inc
 ### 5. Network Signals
 
 **Dispatch to data-analyst:**
-"Check if DID [target_did] appears in any URL co-sharing clusters. Return cluster IDs, cluster sizes, and evolution types. Also check quote co-sharing clusters."
+"Check if DID [target_did] appears in any URL co-sharing clusters. Return cluster IDs, cluster sizes, and evolution types. Also check quote co-sharing clusters (`quote_cosharing_membership` and `quote_cosharing_clusters`)."
 
 Additionally, use the `cosharing_pairs` MCP tool directly to check raw co-sharing edges for the target DID.
 
-**What this reveals:** Whether the account participates in coordinated URL or quote sharing networks.
+**What this reveals:** Whether the account participates in coordinated URL or quote sharing networks. Quote co-sharing clusters detect pile-on and brigading via coordinated quoting; URL clusters detect coordinated link pushing.
 
 ### 6. Infrastructure
 
 **Dispatch to data-analyst:**
-"Query account metadata for DID [target_did]: account creation date, PDS host, and any signup anomaly flags from pds_signup_anomalies (check if the PDS host appears with anomalous signup rates)."
+"Query account metadata for DID [target_did]: account creation date, PDS host, and any signup anomaly flags from pds_signup_anomalies (check if the PDS host appears with anomalous signup rates around the account's creation date)."
 
 Use `domain_check` directly on any unusual PDS hosts identified.
 
 **What this reveals:** Account age, hosting infrastructure, and whether the account was created on a PDS with anomalous signup patterns (mass-registration signal).
 
-### 7. Engagement Context
+### 7. Overdispersion Context
 
 **Dispatch to data-analyst:**
-"For DID [target_did], check url_overdispersion_results to see if any domains shared by this account are flagged as anomalous. Return the domain, is_anomaly flag, and sample_dids if the target appears."
+"For DID [target_did], check url_overdispersion_results to see if any domains shared by this account are flagged as anomalous. Return the domain, is_anomaly flag, volume_p_value, density_p_value, and sample_dids if the target appears. Also check quote_overdispersion_results — does any post by this account appear as a quoted_author_did with anomalous quoting rates? Return quoted_uri, total_shares, unique_sharers, and is_anomaly."
 
-**What this reveals:** Whether the account shares domains that are being pushed by coordinated networks.
+**What this reveals:** Whether the account shares domains being pushed by coordinated networks (URL overdispersion), and whether the account's own posts are being targeted by coordinated quote-post campaigns (quote overdispersion).
+
+### 8. Ozone Moderation History
+
+Use `ozone_query_statuses` directly with the target DID to retrieve the account's current moderation status — existing labels, review state, tags, and any open reports.
+
+Use `ozone_query_events` directly with the target DID to retrieve the moderation event log — prior labelling actions, escalations, appeals, comments from previous reviewers.
+
+**What this reveals:** Whether the account has prior moderation history, what labels have been applied or removed, whether it's been reviewed before and what the outcome was. An account with repeated label-appeal cycles or multiple prior escalations has a different risk profile than one with no moderation history.
+
+### 9. Protocol-Level Profile
+
+Fetch the account's AT Protocol profile record directly. Use the `describe_repo` PDSX tool (or Slingshot `com.atproto.repo.getRecord` for `app.bsky.actor.profile/self`) to retrieve the current profile — display name, bio, avatar, banner.
+
+If the account's handle is a custom domain (not `*.bsky.social`), use `whois_lookup` on the domain to check registration age, registrar, and privacy status.
+
+**What this reveals:** Profile presentation, potential impersonation signals (copied bios/avatars), and whether a custom domain handle was recently registered or uses privacy protection (common in coordinated networks).
 
 ### Handling Missing Data
 
@@ -82,19 +98,35 @@ Some queries may return no results (new accounts, accounts with no rule hits, ac
 
 ## Phase 2: Classification
 
-Apply the following schema to the collected data. Every field must be populated — use "unknown" or "insufficient_data" when data is unavailable rather than guessing.
+### Load Policy Guidance
+
+Check for a `.policies/` directory in the current working directory. Read all files within it — these contain label definitions, enforcement criteria, and policy guidance that inform classification decisions.
+
+If `.policies/` also contains a `precedents/` subdirectory, read those files too. Precedents are prior analyst decisions on ambiguous cases that serve as case law for future classification.
+
+Policy files may define:
+- **Custom account types** — additional `account_type` values beyond the defaults below (e.g., `impersonation`, `csam`, `doxxing`). Add any custom types to the enum.
+- **Custom signals** — additional entries for the Signal Catalogue. Integrate them under the appropriate category, or create a new category if the policy defines one.
+- **Recommendation overrides** — policies may specify that certain account types or signal combinations require specific recommendations (e.g., "accounts matching [policy X] must be `label_and_escalate`"). These override the default recommendation mapping.
+- **Policy-specific labels** — when a policy defines which Ozone label to apply for a given violation, record the label name alongside the recommendation.
+- **Precedents** — prior analyst decisions on edge cases. Apply matching precedents to similar accounts rather than re-evaluating from scratch.
+
+If no `.policies/` directory is found, proceed with the default schema below. Do not warn — the defaults are sufficient for general-purpose assessment.
+
+Apply the following schema to the collected data, extended by any loaded policies. Every field must be populated — use "unknown" or "insufficient_data" when data is unavailable rather than guessing.
 
 ### Classification Schema
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `account_type` | enum | `genuine`, `bot`, `io_suspected`, `scam`, `spam`, `hybrid`, `insufficient_data` |
+| `account_type` | enum | `genuine`, `bot`, `io_suspected`, `scam`, `spam`, `hybrid`, `insufficient_data`, plus any custom types from `.policies/` |
 | `confidence` | enum | `high`, `medium`, `low` |
-| `signals` | list | Evidence items supporting the classification (see Signal Catalogue below) |
+| `signals` | list | Evidence items supporting the classification (see Signal Catalogue below, extended by policy signals) |
 | `topic_breakdown` | map | Topic -> percentage of content (e.g., `{"politics/elections": 70, "sports": 20, "other": 10}`) |
 | `language_profile` | map | Language -> percentage (e.g., `{"en": 85, "pt": 15}`) |
 | `narrative_alignment` | string | Summary of dominant narrative(s) the account pushes, or "varied/no dominant narrative" |
 | `recommendation` | enum | `no_action`, `monitor`, `escalate`, `label`, `label_and_escalate` |
+| `policy_basis` | string | Which policy from `.policies/` supports this classification, or "default schema" if no custom policy applies |
 
 ### Signal Catalogue
 
@@ -133,6 +165,13 @@ Classify by evaluating signals from each category. An account may exhibit signal
 - **Natural temporal patterns**: Normal hourly entropy (< 3.9) and interval entropy (> 1.5)
 - **Diverse sources**: Links to varied domains, not concentrated on a few
 
+#### Moderation History Signals
+- **Repeat offender**: Multiple prior labels applied, especially if the same label recurs after appeals
+- **Label-appeal cycling**: Pattern of label → appeal → removal → re-offence indicates deliberate boundary-testing
+- **Prior escalation**: Account was previously escalated, suggesting known problematic behaviour
+- **Clean history**: No prior moderation events — account has no prior flags (weighs toward genuine, but does not guarantee it)
+- **Quote-post target**: Account's posts are being quoted at anomalous rates (quote overdispersion), suggesting it is a target of coordinated amplification or pile-on
+
 ### Confidence Determination
 
 | Confidence | Criteria |
@@ -164,6 +203,7 @@ Present the assessment using this format:
 
 **Account Type:** [account_type] ([confidence] confidence)
 **Recommendation:** [recommendation]
+**Policy Basis:** [policy_basis]
 
 ### Signals
 - [signal 1 — brief evidence note]
@@ -194,7 +234,7 @@ When a full report is requested, load the `reporting-results` skill and produce 
 - **Bottom Line:** Account type + confidence + recommendation in one sentence
 - **Impact:** Posting volume, reach indicators, cluster membership, rule hit counts
 - **Next Steps:** Specific actions based on recommendation (monitor, label with which label, escalate to whom)
-- **Details:** Full evidence trail from all 7 data collection categories
+- **Details:** Full evidence trail from all 9 data collection categories
 - **Timestamps:** Data collection time range, assessment timestamp
 
 Select the **memo** report type for individual account assessments. Use **cell deep-dive** if the account is part of a larger network being investigated.
