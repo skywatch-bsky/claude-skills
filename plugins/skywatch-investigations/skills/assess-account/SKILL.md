@@ -19,6 +19,10 @@ Use this skill when you need to determine what type of account you're looking at
 
 The skill accepts either a DID (`did:plc:...`) or a handle (`@user.bsky.social` or `user.bsky.social`). If a handle is provided, resolve it to a DID before proceeding — dispatch the data-analyst with: "Resolve this handle to a DID: [handle]". Use the resolved DID for all subsequent queries.
 
+## Data Limitation: ClickHouse Window
+
+ClickHouse (`osprey_execution_results`) retains approximately 2 months of data. This is a partial view of an account's history, NOT the complete picture. Thin or absent ClickHouse results mean the data hasn't been indexed — not that the account has no content. **Never conclude an account has "zero content," "no posts," or "nothing to evaluate" based solely on ClickHouse returning few or no results.** Always supplement with direct PDS record fetching when ClickHouse data is insufficient.
+
 ## Phase 1: Data Collection
 
 Dispatch each of the following research questions to the data-analyst agent. Include the target DID and any relevant time constraints. The data-analyst formulates and executes the queries, returning results as markdown tables.
@@ -48,6 +52,10 @@ Dispatch each of the following research questions to the data-analyst agent. Inc
 
 **Dispatch to data-analyst:**
 "Sample the 50 most recent posts from DID [target_did] from osprey_execution_results (use the content field). Return the post text, timestamp, and any rule that matched. Focus on distinct content — skip exact duplicates."
+
+**Supplement with PDS records:** If ClickHouse returns fewer than 30 distinct posts, also fetch posts directly from the account's PDS using the `list_records` PDSX tool with collection `app.bsky.feed.post` and the target DID as `repo`. Paginate (limit 25, use cursor) to collect at least 50-100 posts. This captures the full account history beyond the ClickHouse ~2 month window.
+
+Always record how many posts came from each source (ClickHouse vs PDS) in the assessment output. If the account's content is primarily outside the ClickHouse window, the PDS data is the primary evidence — not a fallback.
 
 **What this reveals:** What the account talks about, content diversity, and whether posts are templated or varied.
 
@@ -94,7 +102,11 @@ If the account's handle is a custom domain (not `*.bsky.social`), use `whois_loo
 
 ### Handling Missing Data
 
-Some queries may return no results (new accounts, accounts with no rule hits, accounts not in entropy results). This is expected — proceed with available data and flag gaps in the Classification phase. An account with minimal data produces a low-confidence assessment, not an error.
+Some queries may return no results (new accounts, accounts with no rule hits, accounts not in entropy results). For non-content queries (entropy, overdispersion, co-sharing), this is expected — proceed with available data and flag gaps in the Classification phase.
+
+However, **missing content data is different.** If ClickHouse returns few or no posts, you MUST fetch content from the PDS via `list_records` before proceeding. An account with minimal ClickHouse data but active posting history on its PDS is not a low-data account — it's an account whose data predates the indexing window. Treat PDS-sourced content with the same evidentiary weight as ClickHouse content (minus the rule-match metadata).
+
+An account with minimal data from ALL sources (ClickHouse and PDS) produces a low-confidence assessment, not an error.
 
 ## Phase 2: Classification
 

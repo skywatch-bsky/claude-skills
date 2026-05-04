@@ -60,7 +60,9 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - `working-the-queue` treats each reported AT-URI as a separate subject — never rolls up or deduplicates multiple reported posts from the same account
 - `working-the-queue` evaluates replies in thread context (parent post, account relationship, reporter identity) before classification
 - `working-the-queue` delegates per-subject data collection to subagents to preserve triage agent context window; subagents return recommendations with supporting evidence
+- `working-the-queue` and `assess-account` supplement ClickHouse data with PDS record fetching via `list_records` (PDSX) when ClickHouse returns insufficient content — ClickHouse covers ~2 months, not the full account history
 - `working-the-queue` proactively recommends account-level labels when post-level evidence reveals systemic behaviour patterns
+- `working-the-queue` label actions include evidence comments with specific AT-URIs, verbatim post text, and editorial notes — minimum 2 cited posts per label
 - When `working-the-queue` encounters ambiguous policy interpretation, it defers to the analyst and records the decision as a precedent in `.policies/precedents/`
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
 - Co-sharing tools (`cosharing_clusters`, `cosharing_pairs`, `cosharing_evolution`) use `queryTrusted` to bypass validation for server-built queries with sanitised inputs (no LIMIT requirement)
@@ -79,7 +81,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 ## Dependencies
 
-- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url/quote_overdispersion_results, account_entropy_results, url/quote_cosharing_pairs/clusters/membership tables), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
+- **Uses**: ClickHouse (osprey_execution_results, pds_signup_anomalies, url/quote_overdispersion_results, account_entropy_results, url/quote_cosharing_pairs/clusters/membership tables), PDSX `list_records` (direct PDS record fetching for content beyond ClickHouse window), ip-api.com (GeoIP), WHOIS servers, Ozone API (read/write moderation events)
 - **Used by**: Any Claude Code session with this plugin installed
 - **Boundary**: Does NOT overlap with osprey-rules plugin (rule writing) or osprey-rule-investigator (rule project analysis). The `accessing-osprey` skill provides context about the Osprey system but directs users to osprey-rules for rule authoring.
 
@@ -122,7 +124,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.21.0, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.23.0, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
@@ -152,3 +154,4 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - `url_cosharing_pairs`, `url_cosharing_membership`, `quote_cosharing_pairs`, and `quote_cosharing_membership` have 7-day TTL — queries beyond that window return no results
 - `url_cosharing_clusters` and `quote_cosharing_clusters` have no TTL — cluster-level data is retained indefinitely
 - Ozone `ozoneRequest` helper automatically retries on ExpiredToken with session refresh — no manual retry needed in consuming code
+- ClickHouse `osprey_execution_results` retains ~2 months of data — NOT the full account history. Thin ClickHouse results are a data gap, not evidence of inactivity. Skills must supplement with PDSX `list_records` when ClickHouse content is insufficient

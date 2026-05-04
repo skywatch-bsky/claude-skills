@@ -2,6 +2,14 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.23.0
+
+**Changed:**
+- `working-the-queue`, `assess-account`: supplement ClickHouse with PDS record fetching via PDSX `list_records` when ClickHouse returns insufficient content — ClickHouse covers ~2 months, not the full account history
+- `working-the-queue`: Phase 3 label actions now require evidence comments with specific AT-URIs, verbatim post text, and editorial notes (minimum 2 cited posts per label)
+- `working-the-queue`: `key_evidence` classification field now requires full AT-URIs for all cited posts
+- `assess-account`: "Handling Missing Data" now distinguishes content gaps (must fetch from PDS) from non-content gaps (proceed with available data)
+
 ## skywatch-investigations 0.22.1 (pre-release)
 
 **Fixed:**

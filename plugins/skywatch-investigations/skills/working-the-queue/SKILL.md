@@ -78,6 +78,12 @@ However, the agent should proactively recommend account-level labels when the ev
 
 When recommending an account-level label, add it as a separate classification entry alongside the post-level entries. The analyst decides whether to apply both, one, or neither.
 
+### Data Limitation: ClickHouse Window
+
+ClickHouse (`osprey_execution_results`) retains approximately 2 months of data. This is a partial view of an account's history, NOT the complete picture. Thin or absent ClickHouse results mean the data hasn't been indexed — not that the account has no content. **Never conclude an account has "zero content" or "nothing to evaluate" based solely on ClickHouse returning few or no results.**
+
+When ClickHouse returns fewer than 20 posts for a subject, or when the reporter's claims cannot be verified from ClickHouse data alone, the subagent MUST supplement by fetching posts directly from the account's PDS using `list_records` (PDSX tool) with collection `app.bsky.feed.post`. This retrieves the account's actual post history regardless of the ClickHouse indexing window.
+
 ### Per-Subject Data Collection
 
 For each subject, dispatch a **Sonnet** subagent to gather context. Use Sonnet for speed — Opus is too slow for per-subject data collection across a batch. The subagent collects all four categories below and returns a structured summary. This preserves the triage agent's context window for classification decisions across the full batch.
@@ -86,11 +92,13 @@ For each subject, dispatch a **Sonnet** subagent to gather context. Use Sonnet f
 
 > Gather moderation context for subject [DID or AT-URI]. Collect: (1) moderation history from ozone_query_events — prior reports, labels, actions, sticky comments; (2) content context — 20 most recent posts from this DID via ClickHouse osprey_execution_results with post text, timestamps, and matched rules, plus rule hits for the past 30 days grouped by rule name with counts; (3) report details — what was reported, by whom, what reason was given; (4) if the subject is a reply, thread context — the parent post, the account being replied to, and the relationship between the accounts.
 >
+> IMPORTANT: ClickHouse only covers ~2 months of data. If ClickHouse returns fewer than 20 posts, you MUST also fetch posts directly from the account's PDS using the `list_records` PDSX tool with collection `app.bsky.feed.post` and the subject's DID as `repo`. Paginate with limit 25 and use the cursor to fetch multiple pages — aim for at least 50 posts or until you run out of content. This is essential for accounts that pre-date the ClickHouse window or have sparse recent activity.
+>
 > CRITICAL: Return the full verbatim text of the reported content. Do NOT summarise, paraphrase, or excerpt — reproduce it character-for-character. The analyst needs the exact original text to make moderation decisions. For replies, also return parent posts verbatim.
 >
-> Based on what you find, return: (a) the reported content verbatim; (b) a recommended classification (label / no_action / investigate_further / escalate / defer) with a recommended label and label level if applicable; (c) the specific evidence supporting that recommendation — key posts, rule hit patterns, moderation history, thread context. Keep the summary concise — key facts and reasoning, not raw data dumps.
+> Based on what you find, return: (a) the reported content verbatim; (b) a recommended classification (label / no_action / investigate_further / escalate / defer) with a recommended label and label level if applicable; (c) the specific evidence supporting that recommendation — key posts, rule hit patterns, moderation history, thread context; (d) whether content was sourced from ClickHouse, PDS list_records, or both — and how many posts were reviewed from each source. Keep the summary concise — key facts and reasoning, not raw data dumps.
 
-The subagent should use the data-analyst agent for ClickHouse queries and MCP tools directly for Ozone queries. The primary agent makes the final classification decision but uses the subagent's recommendation and evidence as input.
+The subagent should use the data-analyst agent for ClickHouse queries, the `list_records` PDSX tool directly for PDS record fetching, and MCP tools directly for Ozone queries. The primary agent makes the final classification decision but uses the subagent's recommendation and evidence as input.
 
 #### 1. Moderation History
 
@@ -106,7 +114,9 @@ This reveals whether the subject is a repeat offender, has prior context, or has
 
 Query via data-analyst: pull the 20 most recent posts from DID [subject_did] from osprey_execution_results. Return post text, timestamp, and any rules that matched. Also return any rule hits for this DID in the past 30 days grouped by rule name with hit counts.
 
-This reveals what the account actually posts, beyond the single reported item. Pattern of behaviour matters more than any individual post.
+If ClickHouse returns fewer than 20 posts, also fetch posts directly from the PDS using `list_records` (PDSX tool) with collection `app.bsky.feed.post` and the subject's DID as `repo`. Paginate to collect at least 50 posts. Record which source each piece of content came from.
+
+ClickHouse covers ~2 months. The PDS holds the full account history. Both are needed for a complete picture — ClickHouse provides rule-match context, the PDS provides content completeness.
 
 #### 3. Report Content
 
@@ -136,6 +146,7 @@ After reviewing a subagent's returned summary and recommendation, the primary tr
 
 Examples of follow-up dispatches:
 
+- **PDS record fetching** — "Fetch posts from DID [X] via `list_records` (PDSX tool, collection `app.bsky.feed.post`, repo [DID]). Paginate to get at least 50-100 posts. Return post text and timestamps." Use this whenever ClickHouse data is thin or the reporter's claims can't be verified from indexed content alone.
 - **Deeper ClickHouse queries** — "Pull all posts from this DID in the past 7 days that matched rule [X]. Return full post text and timestamps." or "Find all accounts that co-shared URLs with this DID in the past 7 days."
 - **Thread expansion** — "Retrieve the full thread for AT-URI [X] — all replies, not just the parent chain."
 - **Account relationship check** — "Determine the follow relationship between DID [A] and DID [B]. Check if they have prior interaction history."
@@ -157,7 +168,7 @@ Apply the following schema to each subject. Every field must be populated.
 | `recommended_label` | string | Label to apply (only when classification is `label`) |
 | `label_level` | enum | `post` or `account` — whether the label targets this specific content or the account overall (only when classification is `label`) |
 | `reasoning` | string | Brief explanation of the decision |
-| `key_evidence` | list | Specific posts, signals, or history items that informed the decision. For replies, must include thread context. |
+| `key_evidence` | list | Specific posts with AT-URIs, verbatim text, and editorial notes. Each entry MUST include the full AT-URI (`at://did:plc:.../app.bsky.feed.post/...`) so it can be cited in the evidence comment during Phase 3. For replies, must include thread context with AT-URIs for parent posts. |
 | `question` | string | Only for `defer` — the specific question for the analyst |
 
 ### Classification Criteria
@@ -269,14 +280,35 @@ Dispatch action execution to a Haiku subagent to preserve context and reduce cos
 
 If the user answered any `defer` questions, write each decision to `.policies/precedents/` before proceeding. This ensures the precedent is recorded even if the session is interrupted during labelling.
 
-### Step 2: Dispatch Action Subagent
+### Step 2: Build Evidence Comments
+
+Before dispatching the action subagent, the triage agent MUST build an evidence comment for every label action. Evidence comments are the permanent moderation record — a future reviewer seeing this label must understand exactly why it was applied without re-investigating the account.
+
+**Evidence comment format:**
+
+```
+[Label] applied — [one-line policy basis]
+
+Evidence:
+- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
+- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
+- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
+```
+
+Requirements:
+- **Minimum 2 AT-URIs per label action.** A label without specific post citations is unverifiable. If you can't cite 2 posts, the evidence is insufficient — classify as `investigate_further` instead.
+- **Verbatim text or meaningful excerpt** from each cited post. The reader must see what was actually said, not a characterisation of it.
+- **Brief editorialisation** after each citation explaining why it's relevant to the label (e.g., "TDS framing per maga-trump precedent", "denies trans identity — one-strike policy", "dehumanising language toward immigrants").
+- For account-level labels, cite the posts that establish the pattern. For post-level labels, cite the specific post plus any thread context that's relevant.
+
+### Step 3: Dispatch Action Subagent
 
 Generate the action manifest and dispatch a **Haiku** subagent with the following prompt pattern:
 
 > Execute the following moderation actions. Use batchId [UUID] for all label operations.
 >
 > **Labels to apply:**
-> [For each: subject (AT-URI or DID), label name, level (post/account), comment text if any]
+> [For each: subject (AT-URI or DID), label name, level (post/account), evidence comment (built in Step 2)]
 >
 > **Other actions:**
 > [For each: subject, action type (escalate/tag/mute), parameters]
@@ -284,10 +316,10 @@ Generate the action manifest and dispatch a **Haiku** subagent with the followin
 > **Acknowledge:**
 > [List of all subjects to acknowledge. Use acknowledgeAccountSubjects: true for DIDs.]
 >
-> Apply labels via `ozone_label`, comments via `ozone_comment`, then execute other actions, then acknowledge all subjects. Report back what succeeded and what failed.
+> For each label, apply the label via `ozone_label` with the evidence comment as the `comment` parameter. Then execute other actions, then acknowledge all subjects. Report back what succeeded and what failed.
 
 The subagent handles:
-- Applying labels (AT-URI for post-level, DID for account-level)
+- Applying labels (AT-URI for post-level, DID for account-level) with evidence comments
 - Adding `ozone_comment` with reasoning where the decision was non-obvious
 - `ozone_escalate` for escalation subjects
 - `ozone_tag` for tagging subjects
