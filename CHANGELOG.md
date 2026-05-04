@@ -2,6 +2,12 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.23.1
+
+**Fixed:**
+- `working-the-queue`: reporter comments matching label names (e.g., "Blue Heart" → `blue-heart-emoji`) are now treated as label nominations — factual claim is verified before classifying
+- `working-the-queue`: added batch-level anchoring bias check — each subject evaluated independently regardless of patterns in other subjects in the same batch
+
 ## skywatch-investigations 0.23.0
 
 **Changed:**
