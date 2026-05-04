@@ -120,9 +120,15 @@ ClickHouse covers ~2 months. The PDS holds the full account history. Both are ne
 
 #### 3. Report Content
 
-From the `ozone_query_statuses` result, examine the report itself — what was reported, by whom, and what reason was given. Cross-reference the reported content against the broader posting context from step 2.
+From the `ozone_query_statuses` result, examine the report itself — what was reported, by whom, and what reason was given.
 
-**Label-name matching:** If the reporter's comment matches or closely resembles a label name from the loaded `.policies/` reference (e.g., "Blue Heart" → `blue-heart-emoji`, "MAGA" → `maga-trump`, "spam" → `spam`), treat the report as a **label nomination** — the reporter is requesting that specific label be applied. Verify the factual claim (does the account/post actually exhibit the behaviour the label covers?) before classifying. Do NOT dismiss a label nomination as editorial commentary or bad-faith reporting without first checking whether the claim is true.
+**Reports are nominations, not evidence.** User reports are inherently noisy. A report tells you where to look — it does not tell you what you will find. The reporter's comment, reason, and framing are input to direct your investigation, never a source of evidence for or against the subject. Specifically:
+
+- A reporter's comment is **never sufficient grounds to apply a label.** The evidence must come from the account's actual content, behaviour, and history.
+- A reporter's comment is **never sufficient grounds to dismiss a report.** A vague, one-word, or poorly articulated report may still point to a real policy violation. The comment's quality says nothing about the subject's behaviour.
+- **Do not psychoanalyse the reporter.** Do not infer the reporter's motives, political alignment, or whether they are acting in "good faith" or "bad faith." These are not observable and are irrelevant to the classification. The only question is: does the subject's actual content and behaviour violate policy?
+
+**Label-name matching:** If the reporter's comment matches or closely resembles a label name from the loaded `.policies/` reference (e.g., "Blue Heart" → `blue-heart-emoji`, "MAGA" → `maga-trump`, "spam" → `spam`), treat it as a **label nomination** and verify the factual claim against the account's actual content and profile.
 
 #### 4. Reply Thread Context
 
@@ -161,10 +167,10 @@ The triage agent owns the classification decision. If the initial subagent's evi
 
 Processing subjects in batches creates a risk of **anchoring bias** — patterns observed in earlier subjects contaminate the evaluation of later ones. Guard against this:
 
-- **Each subject is independent.** A reporter filing 8 low-quality reports does not make their 9th report low-quality. Evaluate each report on its own evidence.
-- **Reporter reputation is not evidence.** A noisy reporter can still be right. A prolific reporter can still be wrong. The reporter's track record informs how much additional verification you do, not the classification itself.
-- **Never confabulate explanations.** If you find yourself inventing a narrative to explain why a report is bad-faith (e.g., "known right-wing reporting tactic"), check whether that narrative exists in the policy docs or precedents. If it doesn't, you are fabricating justification for a conclusion you reached by pattern-matching, not reasoning.
-- **Verify before dismissing.** When a reporter makes a specific factual claim (account has X in profile, account posted Y), check whether the claim is true before deciding the report is meritless. The cost of one `get_record` or `list_records` call is trivial compared to a wrong no_action.
+- **Each subject is independent.** A reporter filing 8 low-quality reports does not make their 9th report low-quality. Evaluate each subject on its own evidence, gathered from the subject's actual content and behaviour.
+- **Reporter comments are not evidence — in either direction.** You cannot use a reporter's comment to justify applying a label, and you cannot use it to justify dismissing a report. The comment tells you where to look. The subject's content tells you what to do.
+- **Never confabulate explanations.** If you find yourself inventing a narrative to explain why a report is bad-faith (e.g., "known right-wing reporting tactic," "political grievance reporting"), check whether that narrative exists in the policy docs or precedents. If it doesn't, you are fabricating justification for a conclusion you reached by pattern-matching, not reasoning.
+- **Verify before dismissing.** Every report — regardless of the reporter's comment quality — requires checking the subject's actual content. A one-word report pointing to a real violation is more important than a detailed report pointing to nothing. The cost of one `get_record` or `list_records` call is trivial compared to a wrong no_action.
 
 ### Classification
 

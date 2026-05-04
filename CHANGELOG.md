@@ -2,6 +2,12 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.23.2
+
+**Fixed:**
+- `working-the-queue`: reports are nominations, not evidence — reporter comments direct investigation but cannot be used to justify applying or dismissing labels; classification based solely on the subject's actual content and behaviour
+- `working-the-queue`: strengthened batch-level bias check — reporter comments are never evidence in either direction, every report requires verifying the subject's actual content regardless of comment quality
+
 ## skywatch-investigations 0.23.1
 
 **Fixed:**

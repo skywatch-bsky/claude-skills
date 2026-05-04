@@ -63,7 +63,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - `working-the-queue` and `assess-account` supplement ClickHouse data with PDS record fetching via `list_records` (PDSX) when ClickHouse returns insufficient content — ClickHouse covers ~2 months, not the full account history
 - `working-the-queue` proactively recommends account-level labels when post-level evidence reveals systemic behaviour patterns
 - `working-the-queue` label actions include evidence comments with specific AT-URIs, verbatim post text, and editorial notes — minimum 2 cited posts per label
-- `working-the-queue` treats reporter comments matching label names as label nominations — verifies the factual claim before classifying
+- `working-the-queue` treats all reports as nominations — reporter comments direct investigation but are never evidence for or against the subject; classification is based solely on the subject's actual content and behaviour
 - `working-the-queue` guards against batch-level anchoring bias — each subject evaluated independently regardless of batch patterns
 - When `working-the-queue` encounters ambiguous policy interpretation, it defers to the analyst and records the decision as a precedent in `.policies/precedents/`
 - All ClickHouse queries via `clickhouse_query` are read-only (SELECT/WITH only, LIMIT required, no semicolons, no INTO — JOINs, UNIONs, CTEs, subqueries, and any table are allowed)
@@ -126,7 +126,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.23.1, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.23.2, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
