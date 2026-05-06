@@ -1,16 +1,16 @@
 ---
 name: working-the-queue
 description: >-
-  Two-pass moderation queue triage methodology — pull subjects, scan and classify
-  against policy, present batch recommendations, then act on user decisions.
-  Supports multiple entry points (reports, appeals, tags, proactive filtering).
-  Use when triaging the Ozone moderation queue or processing moderation reports.
+  OODA-based moderation queue triage — observe reports, orient with context and
+  policy, decide on classification, act on user-confirmed decisions. Supports
+  multiple entry points (reports, appeals, tags, proactive filtering). Use when
+  triaging the Ozone moderation queue or processing moderation reports.
 user-invocable: false
 ---
 
 # Working the Queue
 
-This skill guides moderation queue triage using a two-pass approach: first scan a batch of subjects with lightweight context gathering to produce recommendations, then act on user-confirmed decisions. The goal is efficient batch processing where the analyst reviews AI recommendations rather than raw reports.
+This skill guides moderation queue triage using an OODA loop: **observe** the report, **orient** with additional context and policy guidance, **decide** whether it violates a policy, then **act** on user-confirmed decisions. The goal is efficient batch processing where the analyst reviews AI recommendations rather than raw reports.
 
 ### Subagent Model Selection
 

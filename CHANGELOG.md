@@ -2,6 +2,12 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.23.7
+
+**Changed:**
+- `working-the-queue`: reframed methodology as OODA loop (observe, orient, decide, act) — observe the report, orient with context and policy, decide on classification, act on analyst-confirmed decisions
+- README: added Policy Directory section documenting `.policies/` and `precedents/` conventions
+
 ## skywatch-investigations 0.23.6
 
 **Changed:**

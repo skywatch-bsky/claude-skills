@@ -8,7 +8,7 @@ A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugin marketpla
 |--------|---------|---------|
 | [osprey-rules](#osprey-rules) | 0.3.0 | SML rule authoring orchestrator with specialized subagents |
 | [osprey-rule-investigator](#osprey-rule-investigator) | 0.1.0 | Read-only analysis of SML rule projects |
-| [skywatch-investigations](#skywatch-investigations) | 0.23.6 | Network investigation toolkit (MCP + skills + agents) |
+| [skywatch-investigations](#skywatch-investigations) | 0.23.7 | Network investigation toolkit (MCP + skills + agents) |
 
 ## Installation
 
@@ -158,7 +158,7 @@ Investigation toolkit for AT Protocol network analysis. Three-layer architecture
 | `triage-rule-hits` | Phase 5 | Rule hit triage (TP/FP/novel classification) |
 | `classify-cluster` | Phase 3-4 | Co-sharing cluster narrative classification |
 | `querying-ozone` | Moderation | Ozone tool reference and query patterns |
-| `working-the-queue` | Moderation | Queue triage methodology (scan-classify-act) |
+| `working-the-queue` | Moderation | Queue triage methodology (observe, orient, decide, act) |
 
 ### MCP Tools (20)
 
@@ -197,6 +197,10 @@ Investigations follow the BLIND report format:
 
 ClickHouse variables are configured in the plugin's `.mcp.json`. Set Ozone variables in `~/.claude/settings.json` under `env` or export them in your shell profile to avoid committing secrets.
 
+### Policy Directory
+
+The `working-the-queue` skill reads a `.policies/` directory in the current working directory for label definitions, enforcement criteria, and policy guidance. An optional `precedents/` subdirectory within it stores prior analyst decisions on ambiguous cases. Without `.policies/`, the skill warns and proceeds with general moderation principles only.
+
 ---
 
 ## Known Gotchas
@@ -230,7 +234,7 @@ skywatch-skills/
 │   │   ├── agents/                 # 1 agent (investigator)
 │   │   ├── skills/                 # 1 skill + UDF reference
 │   │   └── CLAUDE.md
-│   └── skywatch-investigations/    # v0.23.6
+│   └── skywatch-investigations/    # v0.23.7
 │       ├── .claude-plugin/
 │       │   └── plugin.json
 │       ├── .mcp.json               # MCP server config

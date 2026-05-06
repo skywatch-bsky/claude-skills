@@ -29,7 +29,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
   - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
   - `querying-ozone` — Ozone MCP tool reference: query patterns, filter combinations, pagination, write tool conventions
-  - `working-the-queue` — moderation queue triage methodology: two-pass scan-classify-act workflow with policy-based recommendations, post/account-level labelling, reply thread context, and subagent delegation
+  - `working-the-queue` — moderation queue triage methodology: OODA-based workflow (observe, orient, decide, act) with policy-based recommendations, post/account-level labelling, reply thread context, and subagent delegation
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
   - `clickhouse_schema` — Discover table structure and column definitions for all queryable tables
@@ -126,7 +126,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.23.6, metadata) |
+| `.claude-plugin/plugin.json` | Plugin manifest (name, version 0.23.7, metadata) |
 | `.mcp.json` | MCP server configuration with ClickHouse env vars (Ozone env vars set via shell/settings) |
 | `agents/investigator.md` | Orchestrator agent, dispatches data-analyst for queries |
 | `agents/data-analyst.md` | ClickHouse query agent, focused on osprey_execution_results |
@@ -139,7 +139,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `skills/search-incidents/SKILL.md` | Topic-based incident search methodology |
 | `skills/classify-cluster/SKILL.md` | Co-sharing cluster classification methodology |
 | `skills/querying-ozone/SKILL.md` | Ozone MCP tool reference (query patterns, filters, write conventions) |
-| `skills/working-the-queue/SKILL.md` | Queue triage methodology (scan-classify-act with policy guidance) |
+| `skills/working-the-queue/SKILL.md` | Queue triage methodology (OODA with policy guidance) |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas
