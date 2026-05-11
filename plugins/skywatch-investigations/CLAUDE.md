@@ -60,7 +60,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - `working-the-queue` treats each reported AT-URI as a separate subject — never rolls up or deduplicates multiple reported posts from the same account
 - `working-the-queue` evaluates replies in thread context (parent post, account relationship, reporter identity) before classification
 - `working-the-queue` delegates per-subject data collection to subagents to preserve triage agent context window; subagents return recommendations with supporting evidence
-- `working-the-queue` caps initial content fetch to 5 posts per subject (plus thread context for replies); deeper content fetching (PDS `list_records`, additional ClickHouse queries) is reserved for analyst-requested follow-up, capped at 10 posts per follow-up
+- `working-the-queue` uses ClickHouse as the primary data source (rule hits first, then content) — PDS queries are fallback only; caps initial content fetch to 5 posts per subject (plus thread context for replies); deeper fetching is analyst-triggered, capped at 10 posts per follow-up
 - `assess-account` supplements ClickHouse data with PDS record fetching via `list_records` (PDSX) when ClickHouse returns insufficient content — ClickHouse covers ~2 months, not the full account history
 - `working-the-queue` proactively recommends account-level labels when post-level evidence reveals systemic behaviour patterns
 - `working-the-queue` label actions include evidence comments with specific AT-URIs, verbatim post text, and editorial notes — minimum 2 cited posts per label

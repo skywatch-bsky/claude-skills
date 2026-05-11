@@ -90,26 +90,42 @@ For each subject, dispatch a **Sonnet** subagent to gather context. Use Sonnet f
 
 **Subagent prompt pattern:**
 
-> Gather moderation context for subject [DID or AT-URI]. Collect:
-> (1) **Profile** — fetch the account's profile via `get_record` (PDSX, uri `app.bsky.actor.profile/self`, repo [DID]). Return the handle, display name, and bio/description verbatim.
-> (2) **Moderation history** — from ozone_query_events: prior reports, labels, actions, sticky comments.
-> (3) **Content context** — 5 most recent posts from this DID via ClickHouse osprey_execution_results with post text, timestamps, and matched rules, plus rule hits for the past 30 days grouped by rule name with counts.
-> (4) **Report details** — what was reported, by whom, what reason was given.
-> (5) If the subject is a reply, **thread context** — the parent post, the account being replied to, and the relationship between the accounts.
+> Gather moderation context for subject [DID or AT-URI]. **ClickHouse is your primary data source** — it's cheap and fast. Only fall back to querying the PDS directly (PDSX tools) when ClickHouse cannot provide what you need (e.g., the account pre-dates the ClickHouse window, or the account has been taken down and PDS records are unavailable).
 >
-> TOKEN BUDGET: Fetch a MAXIMUM of 5 posts for content context. If the subject is a reply, also fetch the thread context (parent chain up to 3 levels) — this does NOT count against the 5-post cap. Do NOT fetch additional posts from the PDS. If 5 posts are insufficient for a confident classification, recommend `investigate_further` and note what additional context would help.
+> Collect in this order:
+> (1) **Rule hits** — query ClickHouse osprey_execution_results for all rule hits for this DID in the past 30 days, grouped by rule name with counts. This is the cheapest signal and should be checked first.
+> (2) **Content context** — 5 most recent posts from this DID via ClickHouse osprey_execution_results with post text, timestamps, and matched rules.
+> (3) **Profile** — fetch the account's profile via ClickHouse if available, otherwise fall back to `get_record` (PDSX, uri `app.bsky.actor.profile/self`, repo [DID]). Return the handle, display name, and bio/description verbatim. For taken-down accounts, ClickHouse is the only source — note if the profile fetch fails.
+> (4) **Moderation history** — from ozone_query_events: prior reports, labels, actions, sticky comments.
+> (5) **Report details** — what was reported, by whom, what reason was given.
+> (6) If the subject is a reply, **thread context** — the parent post, the account being replied to, and the relationship between the accounts.
+>
+> DATA SOURCE PRIORITY: ClickHouse first, always. It covers ~2 months of data and includes rule match context. Only use PDSX tools (`get_record`, `list_records`) as a fallback when ClickHouse has no data for this subject — e.g., the account pre-dates the indexing window, or you need a profile that isn't in ClickHouse. For taken-down accounts, ClickHouse may be the ONLY source of post content — the PDS will return errors.
+>
+> TOKEN BUDGET: Fetch a MAXIMUM of 5 posts for content context. If the subject is a reply, also fetch the thread context (parent chain up to 3 levels) — this does NOT count against the 5-post cap. Do NOT fetch additional posts beyond the cap. If 5 posts are insufficient for a confident classification, recommend `investigate_further` and note what additional context would help.
 >
 > CRITICAL: Return ALL content verbatim. Do NOT summarise, paraphrase, or excerpt. The analyst reviews the evidence and makes the decision — the agent's role is to gather and present, not to judge. Specifically return:
 > (a) The account's handle, display name, and bio/description — verbatim.
 > (b) The reported content verbatim (for post-level subjects). For replies, also return parent posts verbatim.
 > (c) The full text of every post reviewed, with AT-URIs and timestamps.
-> (d) A recommended classification (label / no_action / investigate_further / escalate / defer) with a recommended label and label level if applicable.
-> (e) The specific evidence supporting that recommendation — rule hit patterns, moderation history, thread context.
-> (f) How many posts were reviewed and whether the 5-post cap limited the assessment (if so, note what additional context might change the recommendation).
+> (d) Rule hit summary — which rules fired, how many times, over what period.
+> (e) A recommended classification (label / no_action / investigate_further / escalate / defer) with a recommended label and label level if applicable.
+> (f) The specific evidence supporting that recommendation — rule hit patterns, moderation history, thread context.
+> (g) How many posts were reviewed and whether the 5-post cap limited the assessment (if so, note what additional context might change the recommendation).
 
-The subagent should use the data-analyst agent for ClickHouse queries, the `list_records` PDSX tool directly for PDS record fetching, and MCP tools directly for Ozone queries. The primary agent makes the final classification decision but uses the subagent's recommendation and evidence as input.
+The subagent should use the data-analyst agent for ClickHouse queries and MCP tools directly for Ozone queries. Only use PDSX tools (`get_record`, `list_records`) as a fallback when ClickHouse cannot provide what's needed. The primary agent makes the final classification decision but uses the subagent's recommendation and evidence as input.
 
-#### 1. Moderation History
+#### 1. Rule Hits (ClickHouse)
+
+Query via data-analyst: pull all rule hits for DID [subject_did] from osprey_execution_results in the past 30 days, grouped by rule name with hit counts. This is the cheapest signal and often sufficient to determine whether an account is triggering relevant rules.
+
+#### 2. Content Context (ClickHouse)
+
+Query via data-analyst: pull the **5 most recent posts** from DID [subject_did] from osprey_execution_results. Return post text, timestamp, and any rules that matched.
+
+**Do NOT automatically fetch additional posts from the PDS.** 5 posts plus rule hit summaries is sufficient for initial triage. Only fall back to PDSX `list_records` if ClickHouse returns zero posts for this DID. If the evidence is insufficient, classify as `investigate_further` — the analyst can request deeper content fetching.
+
+#### 3. Moderation History
 
 Query `ozone_query_events` for the subject. Look for:
 - Prior reports (how many, how recent, what was reported)
@@ -119,13 +135,7 @@ Query `ozone_query_events` for the subject. Look for:
 
 This reveals whether the subject is a repeat offender, has prior context, or has already been reviewed.
 
-#### 2. Content Context
-
-Query via data-analyst: pull the **5 most recent posts** from DID [subject_did] from osprey_execution_results. Return post text, timestamp, and any rules that matched. Also return any rule hits for this DID in the past 30 days grouped by rule name with hit counts.
-
-**Do NOT automatically fetch additional posts from the PDS.** 5 posts plus rule hit summaries is sufficient for initial triage. If the evidence is insufficient, classify as `investigate_further` — the analyst can request deeper content fetching.
-
-#### 3. Report Content
+#### 4. Report Content
 
 From the `ozone_query_statuses` result, examine the report itself — what was reported, by whom, and what reason was given.
 
@@ -137,7 +147,7 @@ From the `ozone_query_statuses` result, examine the report itself — what was r
 
 **Label-name matching:** If the reporter's comment matches or closely resembles a label name from the loaded `.policies/` reference (e.g., "Blue Heart" → `blue-heart-emoji`, "MAGA" → `maga-trump`, "spam" → `spam`), treat it as a **label nomination** and verify the factual claim against the account's actual content and profile.
 
-#### 4. Reply Thread Context
+#### 5. Reply Thread Context
 
 If the reported content is a reply, the reply MUST be evaluated in the context of its conversation before classification. A reply that looks like a policy violation in isolation may be entirely appropriate in context (or vice versa).
 
