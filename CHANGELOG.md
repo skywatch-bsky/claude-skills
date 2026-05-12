@@ -2,6 +2,15 @@
 
 All notable changes to skywatch-skills plugins are documented here.
 
+## skywatch-investigations 0.23.9
+
+**Added:**
+- `labeling-standards` skill — standalone evidence comment standards for all Ozone label actions, extracted from `working-the-queue`. Defines required comment format (summary line + evidence section), citation thresholds (1 for post-level, 2 for account-level), and ClickHouse-first data sourcing cascade (ClickHouse → Slingshot → PDS direct)
+- `PreToolUse` hook on `ozone_label` — hard-blocks label actions when the comment doesn't meet labelling standards (missing summary line, no evidence section, insufficient citations)
+
+**Changed:**
+- `working-the-queue`: evidence comment format now references `labeling-standards` skill instead of inlining the format
+
 ## skywatch-investigations 0.23.7
 
 **Changed:**

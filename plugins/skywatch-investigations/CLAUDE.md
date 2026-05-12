@@ -29,6 +29,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
   - `triage-rule-hits` — rule hit triage with TP/FP/novel classification and rule health assessment
   - `classify-cluster` — co-sharing cluster narrative classification distinguishing IO from organic coordination
   - `querying-ozone` — Ozone MCP tool reference: query patterns, filter combinations, pagination, write tool conventions
+  - `labeling-standards` — evidence comment standards for all Ozone label actions: required format, citation thresholds, tiered by context (post-level vs account-level vs batch)
   - `working-the-queue` — moderation queue triage methodology: OODA-based workflow (observe, orient, decide, act) with policy-based recommendations, post/account-level labelling, reply thread context, and subagent delegation
 - **MCP Tools** (20 total):
   - `clickhouse_query` — Execute read-only queries (SELECT/WITH only, LIMIT required, JOINs/UNIONs/CTEs/subqueries allowed)
@@ -56,6 +57,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 
 - Investigator NEVER writes ClickHouse queries directly — delegates to data-analyst
 - Investigator loads optional skills (assess-account, search-incidents, classify-cluster, triage-rule-hits, working-the-queue) on-demand at the relevant phase — never pre-loaded
+- All `ozone_label` calls are validated by a `PreToolUse` hook (`validate-label-comment.js`) that enforces `labeling-standards` — calls are hard-blocked if the comment is missing, lacks a summary line, has no Evidence section, or has insufficient AT-URI citations
 - `working-the-queue` loads `querying-ozone` as a prerequisite and reads `.policies/` from the working directory for label/policy guidance
 - `working-the-queue` treats each reported AT-URI as a separate subject — never rolls up or deduplicates multiple reported posts from the same account
 - `working-the-queue` evaluates replies in thread context (parent post, account relationship, reporter identity) before classification
@@ -63,7 +65,7 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 - `working-the-queue` uses ClickHouse as the primary data source (rule hits first, then content) — PDS queries are fallback only; caps initial content fetch to 5 posts per subject (plus thread context for replies); deeper fetching is analyst-triggered, capped at 10 posts per follow-up
 - `assess-account` supplements ClickHouse data with PDS record fetching via `list_records` (PDSX) when ClickHouse returns insufficient content — ClickHouse covers ~2 months, not the full account history
 - `working-the-queue` proactively recommends account-level labels when post-level evidence reveals systemic behaviour patterns
-- `working-the-queue` label actions include evidence comments with specific AT-URIs, verbatim post text, and editorial notes — minimum 2 cited posts per label
+- `working-the-queue` label actions include evidence comments per `labeling-standards` — specific AT-URIs, verbatim post text, and editorial notes
 - `working-the-queue` treats all reports as nominations — reporter comments direct investigation but are never evidence for or against the subject; classification is based solely on the subject's actual content and behaviour
 - `working-the-queue` guards against batch-level anchoring bias — each subject evaluated independently regardless of batch patterns
 - When `working-the-queue` encounters ambiguous policy interpretation, it defers to the analyst and records the decision as a precedent in `.policies/precedents/`
@@ -120,6 +122,8 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | "Pull the latest reports from the queue" | `working-the-queue` skill |
 | "Triage 20 recent reports" | `working-the-queue` skill |
 | "Process all appeals" | `working-the-queue` skill (entry point: appeals) |
+| "What format should label comments use?" | `labeling-standards` skill |
+| "My label got blocked by the hook" | `labeling-standards` skill |
 | "How do I use the ozone query tools?" | `querying-ozone` skill |
 | "What filters does ozone_query_statuses accept?" | `querying-ozone` skill |
 
@@ -139,8 +143,10 @@ The MCP server is an external Python (FastMCP) package installed via `uvx` from 
 | `skills/triage-rule-hits/SKILL.md` | Rule hit triage methodology (sampling, classification, health assessment) |
 | `skills/search-incidents/SKILL.md` | Topic-based incident search methodology |
 | `skills/classify-cluster/SKILL.md` | Co-sharing cluster classification methodology |
+| `skills/labeling-standards/SKILL.md` | Evidence comment standards for all label actions |
 | `skills/querying-ozone/SKILL.md` | Ozone MCP tool reference (query patterns, filters, write conventions) |
 | `skills/working-the-queue/SKILL.md` | Queue triage methodology (OODA with policy guidance) |
+| `hooks/validate-label-comment.js` | PreToolUse hook enforcing labeling-standards on ozone_label |
 | (external) `skywatch-mcp` | Python FastMCP server, installed via `uvx` from GitHub |
 
 ## Gotchas

@@ -361,24 +361,9 @@ If the user answered any `defer` questions, write each decision to `.policies/pr
 
 ### Step 2: Build Evidence Comments
 
-Before dispatching the action subagent, the triage agent MUST build an evidence comment for every label action. Evidence comments are the permanent moderation record — a future reviewer seeing this label must understand exactly why it was applied without re-investigating the account.
+Before dispatching the action subagent, the triage agent MUST build an evidence comment for every label action per the `labeling-standards` skill. If you can't meet the citation threshold for a label, classify as `investigate_further` instead.
 
-**Evidence comment format:**
-
-```
-[Label] applied — [one-line policy basis]
-
-Evidence:
-- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
-- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
-- at://did:plc:.../app.bsky.feed.post/[rkey] — "[verbatim post text or excerpt]" — [why this post is relevant]
-```
-
-Requirements:
-- **Minimum 2 AT-URIs per label action.** A label without specific post citations is unverifiable. If you can't cite 2 posts, the evidence is insufficient — classify as `investigate_further` instead.
-- **Verbatim text or meaningful excerpt** from each cited post. The reader must see what was actually said, not a characterisation of it.
-- **Brief editorialisation** after each citation explaining why it's relevant to the label (e.g., "TDS framing per maga-trump precedent", "denies trans identity — one-strike policy", "dehumanising language toward immigrants").
-- For account-level labels, cite the posts that establish the pattern. For post-level labels, cite the specific post plus any thread context that's relevant.
+Queue triage always uses the **account-level standard** (minimum 2 citations) even for post-level labels, because triage decisions should demonstrate pattern awareness. For post-level labels, cite the specific post plus thread context.
 
 ### Step 3: Dispatch Action Subagent
 
