@@ -1,4 +1,4 @@
-# Osprey Labeling Patterns (24 Patterns)
+# Osprey Labeling Patterns (25 Patterns)
 
 All common labeling use cases in Osprey, with implementation examples.
 
@@ -545,7 +545,56 @@ WhenRules(
 )
 ```
 
-### 24. Multi-Rule OR Trigger
+### 24. AT Protocol Tagging
+
+**When to use:** Add or remove Ozone tags on accounts (not labels — tags are lightweight metadata used for tracking, triage, or workflow).
+
+```python
+WhenRules(
+    rules_any=[SuspiciousRule],
+    then=[
+        AtprotoTag(
+            entity=UserId,
+            tag='suspicious-activity',
+            comment=f'Auto-tagged: {Handle}',
+        ),
+    ],
+)
+```
+
+**Remove a tag when a condition clears:**
+
+```python
+WhenRules(
+    rules_any=[ClearedRule],
+    then=[
+        AtprotoTag(
+            entity=UserId,
+            tag='suspicious-activity',
+            comment=f'Condition cleared for {Handle}',
+            neg=True,
+        ),
+    ],
+)
+```
+
+**Conditional tagging with `apply_if`:**
+
+```python
+WhenRules(
+    rules_any=[ViolationRule],
+    then=[
+        AtprotoTag(
+            entity=UserId,
+            tag='repeat-offender',
+            comment=f'Repeat violation for {Handle}',
+            apply_if=HasPriorWarning,
+        ),
+    ],
+)
+```
+
+### 25. Multi-Rule OR Trigger
 
 **When to use:** Multiple different rules can trigger the same effect (OR logic).
 

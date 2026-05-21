@@ -82,8 +82,7 @@
 |-----|-----------|---------|--------|
 | `AddAtprotoLabel` | `entity: str`, `label: str`, `comment: str`, `email: Optional[str]`, `expiration_in_hours: Optional[int]` | `AtprotoLabelEffect` | `udfs/atproto/atproto_label.py` |
 | `RemoveAtprotoLabel` | `entity: str`, `label: str`, `comment: str`, `email: Optional[str]`, `expiration_in_hours: Optional[int]` | `AtprotoLabelEffect` | `udfs/atproto/atproto_label.py` |
-| `AddAtprotoTag` | `entity: str`, `tag: str`, `comment: Optional[str] = None` | `AtprotoTagEffect` | `udfs/atproto/atproto_tag.py` |
-| `RemoveAtprotoTag` | `entity: str`, `tag: str`, `comment: Optional[str] = None` | `AtprotoTagEffect` | `udfs/atproto/atproto_tag.py` |
+| `AtprotoTag` | `entity: str`, `tag: str`, `comment: str`, `neg: Optional[bool] = False`, `apply_if: Optional[RuleT] = None` | `AtprotoTagEffect` | `udfs/atproto/tag.py` |
 | `AtprotoAcknowledge` | `entity: str`, `comment: Optional[str]` | `AtprotoAcknowledgeEffect` | `udfs/atproto/atproto_acknowledge.py` |
 | `AtprotoComment` | `entity: str`, `comment: str` | `AtprotoCommentEffect` | `udfs/atproto/atproto_comment.py` |
 | `AtprotoSendEmail` | `entity: str`, `email: str`, `comment: Optional[str]` | `AtprotoEmailEffect` | `udfs/atproto/atproto_email.py` |

@@ -133,7 +133,8 @@ WhenRules(
 
 2. **Choose the right effect type:**
    - `LabelAdd` / `LabelRemove` → internal Osprey labels (most common)
-   - `AtprotoLabel` → emit to Bluesky's Ozone
+   - `AtprotoLabel` → emit to Bluesky's Ozone (labels)
+   - `AtprotoTag` → add/remove Ozone tags (lightweight metadata for tracking/triage; use `neg=True` to remove)
    - `DeclareVerdict` → synchronous decision (emit immediately)
 
 3. **Prevent re-labeling:**
